@@ -1,15 +1,19 @@
+import 'package:dart_nostr/dart_nostr.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_nostr/components/feed/widgets/feed_widget.dart';
+import 'package:flutter_nostr/cubit/nostr_feed_cubit/nostr_feed_cubit.dart';
 
-class FlutterNostrFeed extends StatefulWidget {
-  FlutterNostrFeed({Key? key}) : super(key: key);
+class FlutterNostrFeed extends StatelessWidget {
+  const FlutterNostrFeed({super.key, required this.filters});
 
-  @override
-  _FlutterNostrFeedState createState() => _FlutterNostrFeedState();
-}
+  final List<NostrFilter> filters;
 
-class _FlutterNostrFeedState extends State<FlutterNostrFeed> {
   @override
   Widget build(BuildContext context) {
-    return Container(child: null);
+    return BlocProvider(
+      create: (context) => NostrFeedCubit(filters: filters),
+      child: const FlutterNostrFeedWidget(),
+    );
   }
 }
