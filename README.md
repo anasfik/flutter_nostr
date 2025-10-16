@@ -50,7 +50,6 @@ It provides a high-level, easy-to-use API that abstracts away the complexities o
 
 - [~] Support for feature-based Nips
   - [~] Support fro Nips that a client would definitely need to implement, like [Nip-11](https://github.com/nostr-protocol/nips/blob/master/11.md), [Nip-05](https://github.com/nostr-protocol/nips/blob/master/05.md)...
-  - 
 
 - [] Payments
 - [] third-party services integration (e.g., NostrConnect, NostrWalletConnect, etc.)
