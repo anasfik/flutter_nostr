@@ -1,3 +1,4 @@
+import 'package:dart_nostr/dart_nostr.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_nostr/cubit/nostr_feed_cubit/nostr_feed_cubit.dart';
@@ -32,6 +33,12 @@ class FlutterNostrFeedWidget extends StatelessWidget {
         final options = FlutterNostrFeedBuilderOptions(
           loadMore: cubit.loadMore,
           refresh: cubit.refresh,
+          onRegisterEntityForNextParallelRequest: (NostrEvent event) {
+            cubit.registerEntityForNextParallelRequest(event);
+          },
+          onRunParallelRequest: () {
+            cubit.executeParallelRequestIfNeeded();
+          },
         );
 
         return builder(context, data, options);

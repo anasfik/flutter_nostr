@@ -1,6 +1,12 @@
 import 'package:dart_nostr/dart_nostr.dart';
 import 'package:equatable/equatable.dart';
 
+class ParallelRequestId<T> {
+  final String id;
+
+  ParallelRequestId({required this.id});
+}
+
 /// A single step in a parallel request chain.
 ///
 /// - T is the adapted result type of this step.
@@ -12,12 +18,12 @@ import 'package:equatable/equatable.dart';
 class ParallelRequest<T> extends Equatable {
   final List<NostrFilter> filters;
   final T Function(NostrEvent event) adapter;
-  final String id;
+  final ParallelRequestId<T> id;
 
   /// Build the next request using the results of this step.
   /// If provided, it will be invoked with the full List<T> produced by this step.
   /// Note: For better type inference, use the then<U>() method instead.
-  final ParallelRequest Function(List<T> previousResults)? next;
+  final ParallelRequest<dynamic> Function(List<dynamic> previousResults)? next;
 
   const ParallelRequest({
     required this.filters,
@@ -34,7 +40,7 @@ class ParallelRequest<T> extends Equatable {
       filters: filters,
       id: id,
       adapter: adapter,
-      next: (prev) => buildNext(prev),
+      next: (prev) => buildNext(prev.cast<T>()) as ParallelRequest<dynamic>,
     );
   }
 

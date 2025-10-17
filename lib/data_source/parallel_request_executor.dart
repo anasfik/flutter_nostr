@@ -4,13 +4,13 @@ import 'package:flutter_nostr/models/feed_builder_data.dart';
 import 'package:flutter_nostr/models/parallel_request.dart';
 import 'package:flutter_nostr/data_source/nostr_service.dart';
 
-/// Executes parallel request chains with dynamic type handling.
+/// Executes parallel request chains with proper type handling.
 ///
 /// This executor processes ParallelRequest chains by:
 /// 1. Executing the current step's filters against the Nostr service
 /// 2. Adapting the results using the provided adapter function
 /// 3. If a next step exists, recursively executing it with the adapted results
-/// 4. All types are handled dynamically to avoid type inference issues
+/// 4. All types are properly typed using generics for type safety
 class ParallelRequestExecutor {
   final NostrService _service;
 
@@ -22,15 +22,14 @@ class ParallelRequestExecutor {
   /// [initialEvents] - Optional initial events to pass to the first step
   ///
   /// Returns a map containing all results from each step in the chain.
-  Future<Map<String, ParallelEventsRequestResponse>> executeChain({
-    required ParallelRequest rootRequest,
+  Future<Map<String, ParallelEventsRequestResponse>> executeChain<T>({
+    required ParallelRequest<T> rootRequest,
     List<NostrEvent>? initialEvents,
   }) async {
     final results = <String, ParallelEventsRequestResponse>{};
 
-    await _executeStep(
+    await _executeStep<T>(
       request: rootRequest,
-
       previousResults: initialEvents ?? [],
       results: results,
     );
@@ -39,11 +38,10 @@ class ParallelRequestExecutor {
   }
 
   /// Recursively executes a single step in the parallel request chain.
-  Future<void> _executeStep({
-    required ParallelRequest request,
-
-    required List<dynamic> previousResults,
-    required Map<String, EventsRequestResponse> results,
+  Future<void> _executeStep<T>({
+    required ParallelRequest<T> request,
+    required List<NostrEvent> previousResults,
+    required Map<String, ParallelEventsRequestResponse> results,
   }) async {
     try {
       // Execute the current step's filters
@@ -52,7 +50,7 @@ class ParallelRequestExecutor {
       );
 
       // Adapt the events using the provided adapter function
-      final adaptedResults = <dynamic>[];
+      final adaptedResults = <T>[];
       for (final event in events) {
         try {
           final adapted = request.adapter(event);
@@ -65,7 +63,7 @@ class ParallelRequestExecutor {
       }
 
       // Store results for this step
-      results[request.id] = ParallelEventsRequestResponse(
+      results[request.id.id] = ParallelEventsRequestResponse<T>(
         events: events,
         filters: request.filters,
         requestTime: DateTime.now(),
@@ -73,19 +71,22 @@ class ParallelRequestExecutor {
         adaptedResults: adaptedResults,
       );
 
-      // If there's a next step, execute it with the adapted results
-      if (request.next != null) {
-        final nextRequest = request.next!(adaptedResults);
-        await _executeStep(
-          request: nextRequest,
+      final nextRequest = request.next?.call(adaptedResults.cast<dynamic>());
 
-          previousResults: adaptedResults,
+      // If there's a next step, execute it with the adapted results
+      if (nextRequest != null) {
+        await _executeStep<dynamic>(
+          request: nextRequest,
+          previousResults: events,
           results: results,
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Store error for this step
-      results[request.id] = ParallelEventsRequestResponse.error(error: e);
+      results[request.id.id] = ParallelEventsRequestResponse<T>.error(error: e);
+      print(
+        'Error executing step ${request.id.id}: $e, stackTrace: $stackTrace',
+      );
       rethrow;
     }
   }
@@ -96,23 +97,21 @@ class ParallelRequestExecutor {
   /// [initialEvents] - Optional initial events to pass to all chains
   ///
   /// Returns a map where keys are request indices and values are the results.
-  Future<Map<int, Map<String, dynamic>>> executeMultipleChains({
-    required List<ParallelRequest> requests,
+  Future<Map<int, Map<String, ParallelEventsRequestResponse>>>
+  executeMultipleChains<T>({
+    required List<ParallelRequest<T>> requests,
     List<NostrEvent>? initialEvents,
   }) async {
-    final futures = <Future<Map<String, dynamic>>>[];
+    final futures = <Future<Map<String, ParallelEventsRequestResponse>>>[];
 
     for (int i = 0; i < requests.length; i++) {
       futures.add(
-        executeChain(
-          rootRequest: requests[i],
-          initialEvents: initialEvents,
-        ).then((result) => result),
+        executeChain<T>(rootRequest: requests[i], initialEvents: initialEvents),
       );
     }
 
     final results = await Future.wait(futures);
-    final indexedResults = <int, Map<String, dynamic>>{};
+    final indexedResults = <int, Map<String, ParallelEventsRequestResponse>>{};
 
     for (int i = 0; i < results.length; i++) {
       indexedResults[i] = results[i];
@@ -127,8 +126,8 @@ class ParallelRequestExecutor {
   /// [initialEvents] - Optional initial events to pass to the request
   ///
   /// Returns the adapted results from this single step.
-  Future<List<dynamic>> executeSingleStep({
-    required ParallelRequest request,
+  Future<List<T>> executeSingleStep<T>({
+    required ParallelRequest<T> request,
     List<NostrEvent>? initialEvents,
   }) async {
     try {
@@ -138,7 +137,7 @@ class ParallelRequestExecutor {
       );
 
       // Adapt the events using the provided adapter function
-      final adaptedResults = <dynamic>[];
+      final adaptedResults = <T>[];
       for (final event in events) {
         try {
           final adapted = request.adapter(event);

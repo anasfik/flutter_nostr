@@ -11,13 +11,17 @@ class FlutterNostrFeed extends StatelessWidget {
   const FlutterNostrFeed({
     super.key,
     required this.filters,
-    required this.parallelRequestRequestsHandler,
+    this.parallelRequestRequestsHandler,
     required this.builder,
   });
 
   final List<NostrFilter> filters;
-  final ParallelRequest Function(List<NostrEvent> events)?
+  final ParallelRequest Function(
+    Map<String, List<ParallelEventsRequestResponse>> parallelRequestResults,
+    List<NostrEvent> events,
+  )?
   parallelRequestRequestsHandler;
+
   final Widget Function(
     BuildContext context,
 

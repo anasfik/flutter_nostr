@@ -13,6 +13,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
+  flutter_linkify: ^6.0.0
+  visibility_detector: ^0.4.0+2
 
 dev_dependencies:
   flutter_test:

@@ -62,41 +62,43 @@ FlutterNostrFeed(
 )
 ```
 
-### 4. Advanced Feed with User Profiles:
+### 4. Advanced Feed with User Profiles (Single Layer):
 ```dart
 FlutterNostrFeed(
   filters: [NostrFilter(kinds: [1], limit: 20)],
-  parallelRequestRequestsHandler: (events) {
+  parallelRequestRequestsHandler: (parallelRequestResults, events) {
     // Automatically fetch user profiles for each event
-    return ParallelRequest(
-      id: "profiles",
+    return ParallelRequest<UserInfo>(
+      id: ParallelRequestId<UserInfo>(id: "profiles"),
       filters: [NostrFilter(
         kinds: [0], // Profile events
         authors: events.map((e) => e.pubkey).toList(),
       )],
-      adapter: (event) => jsonDecode(event.content!),
+      adapter: (event) => UserInfo.fromEvent(event),
     );
   },
   builder: (context, data, options) {
-    final profiles = data.parallelRequestResults?["profiles"] ?? [];
+    final profiles = data.locateParallelRequestResultsById(
+      ParallelRequestId<UserInfo>(id: "profiles")
+    )?.adaptedResults ?? [];
     
-    return ListView.builder(
-      itemCount: data.events.length,
-      itemBuilder: (context, index) {
-        final event = data.events[index];
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, event, index, data, options) {
         final profile = profiles.firstWhere(
           (p) => p.event.pubkey == event.pubkey,
-          orElse: () => null,
+          orElse: () => UserInfo.empty(),
         );
         
         return Card(
           child: ListTile(
             leading: CircleAvatar(
-              backgroundImage: profile?.adaptedResults['picture'] != null
-                ? NetworkImage(profile!.adaptedResults['picture'])
+              backgroundImage: profile.picture.isNotEmpty
+                ? NetworkImage(profile.picture)
                 : null,
             ),
-            title: Text(profile?.adaptedResults['name'] ?? event.pubkey),
+            title: Text(profile.name.isNotEmpty ? profile.name : event.pubkey),
             subtitle: Text(event.content ?? ''),
           ),
         );
@@ -105,6 +107,107 @@ FlutterNostrFeed(
   },
 )
 ```
+
+### 5. Multi-Layer Parallel Requests (Chaining):
+```dart
+FlutterNostrFeed(
+  filters: [NostrFilter(kinds: [1], limit: 20)],
+  parallelRequestRequestsHandler: (parallelRequestResults, events) {
+    final profileRequestId = ParallelRequestId<UserInfo>(id: "profiles");
+    final followingsRequestId = ParallelRequestId<UserFollowings>(id: "followings");
+    
+    return ParallelRequest<UserInfo>(
+      id: profileRequestId,
+      filters: [NostrFilter(
+        kinds: [0],
+        authors: events.map((e) => e.pubkey).toList(),
+      )],
+      adapter: (event) => UserInfo.fromEvent(event),
+    ).then<UserFollowings>((profiles) {
+      // Chain to fetch followings based on profiles
+      return ParallelRequest<UserFollowings>(
+        id: followingsRequestId,
+        filters: [NostrFilter(
+          kinds: [3], // Contact list events
+          authors: profiles.map((p) => p.pubkey).toList(),
+        )],
+        adapter: (event) => UserFollowings.fromEvent(event),
+      );
+    });
+  },
+  builder: (context, data, options) {
+    final profiles = data.locateParallelRequestResultsById(
+      ParallelRequestId<UserInfo>(id: "profiles")
+    )?.adaptedResults ?? [];
+    
+    final followings = data.locateParallelRequestResultsById(
+      ParallelRequestId<UserFollowings>(id: "followings")
+    )?.adaptedResults ?? [];
+    
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, event, index, data, options) {
+        final profile = profiles.firstWhere(
+          (p) => p.event.pubkey == event.pubkey,
+          orElse: () => UserInfo.empty(),
+        );
+        
+        final userFollowings = followings.firstWhere(
+          (f) => f.pubkey == event.pubkey,
+          orElse: () => UserFollowings(pubkey: '', followings: []),
+        );
+        
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: profile.picture.isNotEmpty
+                ? NetworkImage(profile.picture)
+                : null,
+            ),
+            title: Text(profile.name.isNotEmpty ? profile.name : event.pubkey),
+            subtitle: Text(event.content ?? ''),
+            trailing: Text('${userFollowings.followings.length} following'),
+          ),
+        );
+      },
+    );
+  },
+)
+```
+
+## 🔄 Understanding Parallel Requests
+
+Parallel requests are a powerful feature that allows you to fetch additional data related to your main feed events. This is essential for building rich, social applications.
+
+### Key Concepts:
+
+**🎯 Single Layer**: Fetch one type of related data (e.g., user profiles)
+```dart
+ParallelRequest<UserInfo>(
+  id: ParallelRequestId<UserInfo>(id: "profiles"),
+  filters: [NostrFilter(kinds: [0], authors: eventAuthors)],
+  adapter: (event) => UserInfo.fromEvent(event),
+)
+```
+
+**🌐 Multi-Layer (Chaining)**: Fetch data that depends on previous results
+```dart
+ParallelRequest<UserInfo>(...)
+  .then<UserFollowings>((profiles) {
+    return ParallelRequest<UserFollowings>(
+      id: ParallelRequestId<UserFollowings>(id: "followings"),
+      filters: [NostrFilter(kinds: [3], authors: profiles.map((p) => p.pubkey))],
+      adapter: (event) => UserFollowings.fromEvent(event),
+    );
+  })
+```
+
+### Benefits:
+- **⚡ Performance**: All requests execute in parallel, not sequentially
+- **🎯 Type Safety**: Full type checking with generics
+- **🔄 Automatic**: Handles loading states, errors, and data synchronization
+- **📱 UI Integration**: Seamlessly integrates with Flutter's reactive UI
 
 ## 📱 Try the Example App
 
@@ -116,13 +219,35 @@ flutter pub get
 flutter run
 ```
 
-The example demonstrates:
+The example app includes three different feed implementations:
+
+### 🎯 **Simple Feed Screen**
+- Basic Nostr feed without parallel requests
+- Shows raw event content with link detection
+- Perfect for simple use cases
+
+### 🔄 **Single-Layer Parallel Feed Screen**
+- Demonstrates one layer of parallel requests
+- Fetches user profiles alongside main events
+- Shows profile pictures and names
+- Great for enriching feeds with user data
+
+### 🌐 **Multi-Layer Parallel Feed Screen**
+- Demonstrates chaining multiple parallel requests
+- Layer 1: Fetches user profiles
+- Layer 2: Fetches user followings based on profiles
+- Shows complex data relationships
+- Perfect for advanced social features
+
+### Features Demonstrated:
 - ✅ Real-time Nostr feed with live data
+- ✅ Single and multi-layer parallel request patterns
 - ✅ User profile fetching and display
 - ✅ Pull-to-refresh functionality
 - ✅ Infinite scroll with automatic pagination
 - ✅ Error handling and loading states
 - ✅ Beautiful Material Design UI
+- ✅ Interactive info dialogs explaining each screen
 
 ## Features
 

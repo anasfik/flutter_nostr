@@ -1,5 +1,6 @@
 import 'package:dart_nostr/dart_nostr.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_nostr/flutter_nostr.dart';
 
 class FlutterNostrFeedBuilderData<T> extends Equatable {
   List<NostrEvent>? _eventsListToBeCalculatedOnce;
@@ -18,6 +19,18 @@ class FlutterNostrFeedBuilderData<T> extends Equatable {
     this.parallelRequestResults = const {},
     this.eventRequestResponseEntries = const [],
   });
+
+  List<ParallelEventsRequestResponse<T>>? locateParallelRequestResultsById<T>(
+    ParallelRequestId<T> requestId,
+  ) {
+    final parralelRequests = parallelRequestResults?[requestId.id];
+
+    final casted = parralelRequests?.map((prr) {
+      return ParallelEventsRequestResponse.casted<T>(prr);
+    }).toList();
+
+    return casted;
+  }
 
   List<NostrEvent> get events {
     if (_eventsListToBeCalculatedOnce != null) {
@@ -63,8 +76,8 @@ class EventsRequestResponse extends Equatable {
   List<Object?> get props => [subscriptionId, filters, events, requestTime];
 }
 
-class ParallelEventsRequestResponse extends EventsRequestResponse {
-  final List adaptedResults;
+class ParallelEventsRequestResponse<T> extends EventsRequestResponse {
+  final List<T> adaptedResults;
   final Object? error;
 
   const ParallelEventsRequestResponse({
@@ -88,4 +101,23 @@ class ParallelEventsRequestResponse extends EventsRequestResponse {
   }
   @override
   List<Object?> get props => super.props..addAll([adaptedResults, error]);
+
+  static ParallelEventsRequestResponse<T> casted<T>(
+    ParallelEventsRequestResponse prr,
+  ) {
+    return ParallelEventsRequestResponse(
+      subscriptionId: prr.subscriptionId,
+      filters: prr.filters,
+      events: prr.events,
+      requestTime: prr.requestTime,
+      adaptedResults: [...prr.adaptedResults.whereType<T>()],
+      error: prr.error,
+    );
+  }
+}
+
+extension A<T> on List<ParallelEventsRequestResponse<T>> {
+  List<T>? get adaptedResults {
+    return map((e) => e.adaptedResults).expand((e) => e).toList();
+  }
 }

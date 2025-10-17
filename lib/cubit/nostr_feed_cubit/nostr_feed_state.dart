@@ -4,8 +4,7 @@ class NostrFeedState extends Equatable {
   final List<EventsRequestResponse> eventsRequestResponseEntries;
   final (List<EventsRequestResponse>, List<dynamic>)
   parallelRequestResponseEntries;
-  final Map<String, List<ParallelEventsRequestResponse>>?
-  parallelRequestResults;
+  final Map<String, List<ParallelEventsRequestResponse>> parallelRequestResults;
   final String? error;
   final int iterativeRequestCount;
   final bool isLoading;
@@ -13,7 +12,7 @@ class NostrFeedState extends Equatable {
   const NostrFeedState({
     required this.eventsRequestResponseEntries,
     this.parallelRequestResponseEntries = (const [], const []),
-    this.parallelRequestResults,
+    this.parallelRequestResults = const {},
     this.error,
     this.isLoading = false,
     this.iterativeRequestCount = 0,
