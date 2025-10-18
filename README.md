@@ -633,6 +633,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for the Nostr community**
 
-[⭐ Star this repo](https://github.com/your-username/flutter_nostr) • [🐛 Report issues](https://github.com/your-username/flutter_nostr/issues) • [💬 Join discussions](https://github.com/your-username/flutter_nostr/discussions)
+[⭐ Star this repo](https://github.com/anasfik/flutter_nostr) • [🐛 Report issues](https://github.com/anasfik/flutter_nostr/issues) • [💬 Join discussions](https://github.com/anasfik/flutter_nostr/discussions)
 
 </div>
