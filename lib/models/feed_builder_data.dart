@@ -1,10 +1,7 @@
-import 'package:dart_nostr/dart_nostr.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
 
 class FlutterNostrFeedBuilderData<T> extends Equatable {
-  List<NostrEvent>? _eventsListToBeCalculatedOnce;
-
   final bool isLoading;
   final List<EventsRequestResponse> eventRequestResponseEntries;
   final Map<String, List<ParallelEventsRequestResponse>>?
@@ -12,7 +9,7 @@ class FlutterNostrFeedBuilderData<T> extends Equatable {
   final int iterativeRequestCount;
   final String? error;
 
-  FlutterNostrFeedBuilderData({
+  const FlutterNostrFeedBuilderData({
     required this.isLoading,
     required this.iterativeRequestCount,
     required this.error,
@@ -20,32 +17,22 @@ class FlutterNostrFeedBuilderData<T> extends Equatable {
     this.eventRequestResponseEntries = const [],
   });
 
-  List<ParallelEventsRequestResponse<T>>? locateParallelRequestResultsById<T>(
-    ParallelRequestId<T> requestId,
+  List<ParallelEventsRequestResponse<R>>? locateParallelRequestResultsById<R>(
+    ParallelRequestId<R> requestId,
   ) {
     final parralelRequests = parallelRequestResults?[requestId.id];
 
     final casted = parralelRequests?.map((prr) {
-      return ParallelEventsRequestResponse.casted<T>(prr);
+      return ParallelEventsRequestResponse.casted<R>(prr);
     }).toList();
 
     return casted;
   }
 
   List<NostrEvent> get events {
-    if (_eventsListToBeCalculatedOnce != null) {
-      return _eventsListToBeCalculatedOnce!;
-    }
-
-    _eventsListToBeCalculatedOnce = eventRequestResponseEntries
-        .expand((e) => e.events)
-        .toList();
-
-    _eventsListToBeCalculatedOnce!.sort(
-      (a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime.now()) ?? 0,
-    );
-
-    return _eventsListToBeCalculatedOnce!;
+    final list = eventRequestResponseEntries.expand((e) => e.events).toList();
+    list.sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime.now()) ?? 0);
+    return list;
   }
 
   @override

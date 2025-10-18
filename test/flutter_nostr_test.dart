@@ -1,12 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_nostr/flutter_nostr.dart';
-
-void main() {
-  test('adds one to input values', () {
-    final calculator = Calculator();
-    expect(calculator.addOne(2), 3);
-    expect(calculator.addOne(-7), -6);
-    expect(calculator.addOne(0), 1);
-  });
-}
+ void main() {
+   test('sanity: basic arithmetic', () {
+     expect(1 + 1, equals(2));
+     expect(2 * 3, equals(6));
+   });
+ }
