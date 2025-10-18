@@ -1,23 +1,60 @@
-# flutter_nostr
+# 🚀 flutter_nostr
 
-Beautiful, pragmatic Flutter primitives for building Nostr-powered feeds and social UX.
+<div align="center">
 
-flutter_nostr provides a small, focused set of building blocks for fetching Nostr
-events, enriching them with related data (profiles, contact lists, reactions)
-using typed parallel requests, and rendering them with Flutter-friendly widgets.
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![Nostr](https://img.shields.io/badge/Nostr-8B5CF6?style=for-the-badge&logo=lightning&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-Why this package
-- Practical: opinionated widgets and helpers so you can ship a feed fast.
-- Performant: parallel request executor fetches related data efficiently.
-- Type-safe: generics and typed models make complex chains easier to reason about.
-- Example-first: copyable example screens in `example/` to learn by doing.
+**Beautiful, pragmatic Flutter primitives for building Nostr-powered feeds and social UX**
 
-Quick highlights
-- `FlutterNostrFeed`  main feed widget (filters, builder callback)
-- `FlutterNostrFeedList`  list with pagination, pull-to-refresh and visibility triggers
-- `ParallelRequest<T>` / `ParallelRequestId<T>`  typed parallel requests with chaining
+[📖 Documentation](#-documentation) • [🎯 Quick Start](#-quick-start) • [💡 Examples](#-examples) • [🔧 API Reference](#-api-reference) • [🤝 Contributing](#-contributing)
 
-Installation
+</div>
+
+---
+
+## ✨ What is flutter_nostr?
+
+`flutter_nostr` is a powerful Flutter package that provides **building blocks** for creating Nostr-powered social applications. It handles the complexity of fetching events, enriching them with related data, and rendering them in beautiful, performant Flutter widgets.
+
+### 🎯 Key Features
+
+- 🔄 **Parallel Data Fetching**: Efficiently fetch related data (profiles, reactions, etc.) using typed parallel requests
+- 📱 **Flutter-Native**: Built specifically for Flutter with proper state management and widget lifecycle
+- 🎨 **Customizable**: Flexible builder patterns and adapters for any data structure
+- ⚡ **Performant**: Smart caching, pagination, and visibility-based loading
+- 🔗 **Type-Safe**: Full TypeScript-like type safety with Dart generics
+- 📚 **Example-Rich**: Complete example app with multiple use cases
+
+### 🏗️ Architecture Overview
+
+```mermaid
+graph TD
+    A[FlutterNostrFeed] --> B[NostrFilter]
+    A --> C[ParallelRequest Handler]
+    A --> D[Builder Function]
+
+    C --> E[Profile Requests]
+    C --> F[Reaction Requests]
+    C --> G[Contact Lists]
+
+    E --> H[UserInfo Adapter]
+    F --> I[Reaction Adapter]
+    G --> J[Contact Adapter]
+
+    D --> K[FlutterNostrFeedList]
+    K --> L[Pull-to-Refresh]
+    K --> M[Infinite Scroll]
+    K --> N[Visibility Detection]
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Installation
 
 Add to your `pubspec.yaml`:
 
@@ -26,7 +63,7 @@ dependencies:
   flutter_nostr: ^0.1.0
 ```
 
-Quick start
+### 2. Initialize
 
 ```dart
 import 'package:flutter/material.dart';
@@ -34,246 +71,568 @@ import 'package:flutter_nostr/flutter_nostr.dart';
 
 void main() async {
   // Initialize with one or more relays
-  await FlutterNostr.init(relays: ['wss://relay.nostr.band']);
+  await FlutterNostr.init(relays: [
+    'wss://relay.nostr.band',
+    'wss://nos.lol',
+  ]);
+
   runApp(const MyApp());
 }
 ```
 
-Minimal feed (render events)
+### 3. Basic Feed
+
+```dart
+class MyFeedScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Nostr Feed')),
+      body: FlutterNostrFeed(
+        filters: [
+          NostrFilter(
+            kinds: [1], // Text notes
+            limit: 20,
+          ),
+        ],
+        builder: (context, data, options) => FlutterNostrFeedList(
+          data: data,
+          options: options,
+          itemBuilder: (context, event, index, data, options) {
+            return Card(
+              child: ListTile(
+                title: Text(event.content ?? 'No content'),
+                subtitle: Text('by ${event.pubkey.substring(0, 8)}...'),
+                trailing: Text(
+                  DateFormat('HH:mm').format(
+                    DateTime.fromMillisecondsSinceEpoch(event.createdAt),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+```
+
+**That's it!** 🎉 You now have a fully functional Nostr feed with:
+
+- ✅ Pull-to-refresh
+- ✅ Infinite scroll
+- ✅ Loading states
+- ✅ Error handling
+
+---
+
+## 💡 Examples
+
+### 📱 Example 1: Simple Feed (No Parallel Requests)
+
+Perfect for basic use cases where you just want to display events.
 
 ```dart
 FlutterNostrFeed(
-  filters: [NostrFilter(kinds: [30402], limit: 20)],
+  filters: [NostrFilter(kinds: [1], limit: 10)],
   builder: (context, data, options) => FlutterNostrFeedList(
     data: data,
     options: options,
-    itemBuilder: (context, event, index, data, options) =>
-      ListTile(title: Text(event.content ?? event.pubkey)),
+    itemBuilder: (context, event, index, data, options) {
+      return ListTile(
+        title: Text(event.content ?? 'No content'),
+        subtitle: Text('Author: ${event.pubkey.substring(0, 8)}...'),
+      );
+    },
   ),
 )
 ```
 
-Enriching the feed with profiles (single-layer)
+### 👤 Example 2: Feed with User Profiles (Single Layer)
 
-1. Build a `ParallelRequest<UserInfo>` that fetches profile events for the
-   authors of the visible events.
-2. The executor adapts profile events to `UserInfo` and stores them in
-   `data.parallelRequestResults`.
+Enrich your feed with user profile information.
 
 ```dart
+// Define a request ID for type safety
 final profileRequestId = ParallelRequestId<UserInfo>(id: 'profiles');
 
 FlutterNostrFeed(
-  filters: [...],
+  filters: [NostrFilter(kinds: [1], limit: 10)],
   parallelRequestRequestsHandler: (parallelResults, events) {
     return ParallelRequest<UserInfo>(
       id: profileRequestId,
-      filters: [NostrFilter(kinds: [0], authors: events.map((e) => e.pubkey).toList())],
+      filters: [
+        NostrFilter(
+          kinds: [0], // Profile events
+          authors: events.map((e) => e.pubkey).toList(),
+        ),
+      ],
       adapter: (event) => UserInfo.fromEvent(event),
     );
   },
   builder: (context, data, options) {
-    final profiles = data.locateParallelRequestResultsById(profileRequestId)?.adaptedResults ?? [];
-    # flutter_nostr
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, event, index, data, options) {
+        // Get profile data
+        final profiles = data
+            .locateParallelRequestResultsById(profileRequestId)
+            ?.adaptedResults ?? [];
 
-    Beautiful, pragmatic Flutter primitives for building Nostr-powered feeds and
-    social UX. This README is written for all levels — from beginners who want a
-    copy/paste example to advanced users who need typed parallel chains and
-    customization points.
-
-    Table of contents
-    - What is flutter_nostr?
-    - Quick start (copy/paste)
-    - Examples (beginner → advanced)
-    - API reference (short)
-    - Example app walkthrough
-    - Tips for beginners
-    - Advanced topics
-    - Roadmap & contributing
-
-    What is flutter_nostr?
-    ----------------------
-
-    flutter_nostr provides building blocks for:
-
-    - Fetching events from Nostr relays using `NostrFilter`s.
-    - Enriching events with related data via typed `ParallelRequest<T>` chains.
-    - Rendering lists with `FlutterNostrFeed` and `FlutterNostrFeedList` — both
-      include pagination, pull-to-refresh and visibility-triggered parallel
-      execution hooks.
-
-    Quick start (copy/paste)
-    -----------------------
-
-    1. Add to `pubspec.yaml`:
-
-    ```yaml
-    dependencies:
-      flutter_nostr: ^0.1.0
-    ```
-
-    2. Initialize the SDK in `main.dart`:
-
-    ```dart
-    import 'package:flutter/material.dart';
-    import 'package:flutter_nostr/flutter_nostr.dart';
-
-    void main() async {
-      await FlutterNostr.init(relays: ['wss://relay.nostr.band']);
-      runApp(const MyApp());
-    }
-    ```
-
-    3. Minimal feed widget:
-
-    ```dart
-    FlutterNostrFeed(
-      filters: [NostrFilter(kinds: [30402], limit: 20)],
-      builder: (context, data, options) => FlutterNostrFeedList(
-        data: data,
-        options: options,
-        itemBuilder: (context, event, index, data, options) =>
-          ListTile(title: Text(event.content ?? event.pubkey)),
-      ),
-    )
-    ```
-
-    Examples (step-by-step)
-    -----------------------
-
-    1) Beginner — simple feed
-
-    - Goal: render the latest events of a kind with pull-to-refresh and infinite
-      scroll.
-
-    Use the minimal feed above. The `FlutterNostrFeedList` handles showing a
-    loading indicator and calling `options.loadMore` when the user scrolls near
-    the end.
-
-    2) Intermediate — enrich results with user profiles (single-layer)
-
-    - Goal: fetch profile (kind 0) events for authors of visible events and show
-      their names and avatars.
-
-    Step A — declare a request id and a request builder
-
-    ```dart
-    final profileRequestId = ParallelRequestId<UserInfo>(id: 'profiles');
-
-    ParallelRequest<UserInfo>(
-      id: profileRequestId,
-      filters: [NostrFilter(kinds: [0], authors: authorsList)],
-      adapter: (event) => UserInfo.fromEvent(event),
-    )
-    ```
-
-    Step B — pass a handler to the feed
-
-    ```dart
-    FlutterNostrFeed(
-      filters: [NostrFilter(kinds: [30402], limit: 20)],
-      parallelRequestRequestsHandler: (parallelResults, events) {
-        return ParallelRequest<UserInfo>(
-          id: profileRequestId,
-          filters: [NostrFilter(kinds: [0], authors: events.map((e) => e.pubkey).toList())],
-          adapter: (event) => UserInfo.fromEvent(event),
+        final userProfile = profiles.firstWhere(
+          (profile) => profile.pubkey == event.pubkey,
+          orElse: () => UserInfo.empty(),
         );
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: userProfile.picture.isNotEmpty
+                  ? NetworkImage(userProfile.picture)
+                  : null,
+              child: userProfile.picture.isEmpty
+                  ? Text(userProfile.name.isNotEmpty
+                      ? userProfile.name[0].toUpperCase()
+                      : event.pubkey[0].toUpperCase())
+                  : null,
+            ),
+            title: Text(userProfile.name.isNotEmpty
+                ? userProfile.name
+                : event.pubkey.substring(0, 8) + '...'),
+            subtitle: Text(event.content ?? 'No content'),
+          ),
+        );
+      },
+    );
+  },
+)
+```
+
+### 🔗 Example 3: Multi-Layer Parallel Requests (Advanced)
+
+Chain multiple requests to build complex data relationships.
+
+```dart
+final profileRequestId = ParallelRequestId<UserInfo>(id: 'profiles');
+final followingsRequestId = ParallelRequestId<UserFollowings>(id: 'followings');
+
+FlutterNostrFeed(
+  filters: [NostrFilter(kinds: [1], limit: 10)],
+  parallelRequestRequestsHandler: (parallelResults, events) {
+    return ParallelRequest<UserInfo>(
+      id: profileRequestId,
+      filters: [
+        NostrFilter(
+          kinds: [0],
+          authors: events.map((e) => e.pubkey).toList(),
+        ),
+      ],
+      adapter: (event) => UserInfo.fromEvent(event),
+    ).then<UserFollowings>((profiles) {
+      // Chain: after profiles are fetched, fetch their followings
+      return ParallelRequest<UserFollowings>(
+        id: followingsRequestId,
+        filters: [
+          NostrFilter(
+            kinds: [3], // Contact lists
+            authors: profiles.map((p) => p.pubkey).toList(),
+          ),
+        ],
+        adapter: (event) => UserFollowings.fromEvent(event),
+      );
+    });
+  },
+  builder: (context, data, options) {
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, event, index, data, options) {
+        final profiles = data
+            .locateParallelRequestResultsById(profileRequestId)
+            ?.adaptedResults ?? [];
+
+        final followings = data
+            .locateParallelRequestResultsById(followingsRequestId)
+            ?.adaptedResults ?? [];
+
+        final userProfile = profiles.firstWhere(
+          (profile) => profile.pubkey == event.pubkey,
+          orElse: () => UserInfo.empty(),
+        );
+
+        final userFollowings = followings.firstWhere(
+          (following) => following.pubkey == event.pubkey,
+          orElse: () => UserFollowings(pubkey: '', followings: []),
+        );
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: userProfile.picture.isNotEmpty
+                  ? NetworkImage(userProfile.picture)
+                  : null,
+            ),
+            title: Text(userProfile.name.isNotEmpty
+                ? userProfile.name
+                : event.pubkey.substring(0, 8) + '...'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(event.content ?? 'No content'),
+                SizedBox(height: 4),
+                Text(
+                  '${userFollowings.followings.length} following',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  },
+)
+```
+
+---
+
+## 🔧 API Reference
+
+### Core Classes
+
+#### `FlutterNostr`
+
+Main entry point for the package.
+
+```dart
+class FlutterNostr {
+  static Future<void> init({required List<String> relays});
+  static NostrService get instance;
+}
+```
+
+#### `FlutterNostrFeed`
+
+The main feed widget that handles data fetching and rendering.
+
+```dart
+FlutterNostrFeed({
+  required List<NostrFilter> filters,
+  ParallelRequestRequestsHandler? parallelRequestRequestsHandler,
+  required FeedBuilder builder,
+})
+```
+
+**Parameters:**
+
+- `filters`: List of Nostr filters to query events
+- `parallelRequestRequestsHandler`: Optional handler for parallel data fetching
+- `builder`: Function that builds the UI with fetched data
+
+#### `FlutterNostrFeedList`
+
+A list widget with built-in pagination, pull-to-refresh, and visibility detection.
+
+```dart
+FlutterNostrFeedList({
+  required FeedBuilderData data,
+  required FeedBuilderOptions options,
+  required FeedItemBuilder itemBuilder,
+})
+```
+
+**Parameters:**
+
+- `data`: Contains the fetched events and parallel request results
+- `options`: Provides methods for loading more data and refreshing
+- `itemBuilder`: Function that builds individual list items
+
+#### `ParallelRequest<T>`
+
+Represents a parallel data request with type safety.
+
+```dart
+ParallelRequest<T>({
+  required ParallelRequestId<T> id,
+  required List<NostrFilter> filters,
+  required T Function(NostrEvent) adapter,
+})
+```
+
+**Methods:**
+
+- `.then<U>()`: Chain another request that depends on this one's results
+
+#### `ParallelRequestId<T>`
+
+Type-safe identifier for parallel requests.
+
+```dart
+ParallelRequestId<T>({required String id})
+```
+
+### Data Models
+
+#### `FeedBuilderData`
+
+Contains all the data available in the builder function.
+
+```dart
+class FeedBuilderData {
+  List<NostrEvent> events;
+  List<ParallelRequestResult> parallelRequestResults;
+
+  ParallelRequestResult? locateParallelRequestResultsById<T>(
+    ParallelRequestId<T> id
+  );
+}
+```
+
+#### `FeedBuilderOptions`
+
+Provides methods for data loading and refresh.
+
+```dart
+class FeedBuilderOptions {
+  Future<void> loadMore();
+  Future<void> refresh();
+  bool get isLoading;
+  bool get hasError;
+}
+```
+
+---
+
+## 🎮 Example App
+
+The package includes a comprehensive example app with three different screens:
+
+### 🏠 Home Screen
+
+Navigation hub with links to all example screens.
+
+### 📱 Simple Feed Screen
+
+- Basic event display
+- Link detection
+- No parallel requests
+
+### 👤 Single Layer Parallel Feed Screen
+
+- Profile enrichment
+- Avatar display
+- User name resolution
+
+### 🔗 Multi Layer Parallel Feed Screen
+
+- Chained requests (profiles → followings)
+- Complex data relationships
+- Following count display
+
+### 🚀 Running the Example
+
+```bash
+cd example
+flutter pub get
+flutter run
+```
+
+---
+
+## 🎯 Use Cases
+
+### Social Media Apps
+
+- **Twitter-like feeds**: Text notes with profiles and reactions
+- **Instagram-style**: Media posts with user information
+- **Reddit clones**: Threaded discussions with voting
+
+### Community Platforms
+
+- **Forums**: Topic-based discussions with user profiles
+- **Chat rooms**: Real-time messaging with user presence
+- **Event platforms**: Event announcements with attendee lists
+
+### Content Discovery
+
+- **News aggregators**: Article sharing with author profiles
+- **Blog platforms**: Long-form content with social features
+- **Podcast apps**: Episode sharing with host information
+
+---
+
+## 🛠️ Advanced Topics
+
+### Error Handling
+
+```dart
+FlutterNostrFeed(
+  builder: (context, data, options) {
+    if (options.hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error, size: 64, color: Colors.red),
+            SizedBox(height: 16),
+            Text('Failed to load feed'),
+            SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: options.refresh,
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return FlutterNostrFeedList(/* ... */);
+  },
+)
+```
+
+### Custom Adapters
+
+```dart
+class CustomUserInfo {
+  final String name;
+  final String avatar;
+  final int followers;
+
+  CustomUserInfo({required this.name, required this.avatar, required this.followers});
+
+  factory CustomUserInfo.fromEvent(NostrEvent event) {
+    final content = jsonDecode(event.content ?? '{}') as Map<String, dynamic>;
+
+    return CustomUserInfo(
+      name: content['display_name'] ?? content['name'] ?? 'Anonymous',
+      avatar: content['picture'] ?? '',
+      followers: _extractFollowersCount(event),
+    );
+  }
+
+  static int _extractFollowersCount(NostrEvent event) {
+    // Custom logic to extract follower count
+    return event.tags?.where((tag) => tag[0] == 'p').length ?? 0;
+  }
+}
+```
+
+### Performance Optimization
+
+```dart
+// Use smaller limits during development
+NostrFilter(kinds: [1], limit: 5) // Instead of 50
+
+// Cache parallel request results
+class CachedFeedScreen extends StatefulWidget {
+  @override
+  _CachedFeedScreenState createState() => _CachedFeedScreenState();
+}
+
+class _CachedFeedScreenState extends State<CachedFeedScreen> {
+  Map<String, dynamic> _cache = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterNostrFeed(
+      parallelRequestRequestsHandler: (results, events) {
+        // Check cache first
+        final cacheKey = events.map((e) => e.pubkey).join(',');
+        if (_cache.containsKey(cacheKey)) {
+          return null; // Skip request
+        }
+
+        return ParallelRequest<UserInfo>(/* ... */);
       },
       builder: (context, data, options) {
-        final profiles = data.locateParallelRequestResultsById(profileRequestId)?.adaptedResults ?? [];
-        // find the profile for an event by matching pubkey
+        // Use cached data when available
+        return FlutterNostrFeedList(/* ... */);
       },
-    )
-    ```
+    );
+  }
+}
+```
 
-    Notes:
-    - The feed registers events for parallel requests when they become visible.
-    - Results are collected into `data.parallelRequestResults` and exposed via
-      `locateParallelRequestResultsById` with proper typing.
+---
 
-    3) Advanced — multi-layer chaining (profiles → followings)
+## 🤝 Contributing
 
-    - Goal: fetch profiles first, then fetch each profile's contact list (kind 3)
-      to show following counts.
+We welcome contributions! Here's how you can help:
 
-    Use `.then<U>()` on `ParallelRequest<T>` to construct a chain where the next
-    request receives the adapted results of the previous step.
+### 🐛 Bug Reports
 
-    ```dart
-    ParallelRequest<UserInfo>(...)
-      .then<UserFollowings>((profiles) {
-        return ParallelRequest<UserFollowings>(
-          id: ParallelRequestId(id: 'followings'),
-          filters: [NostrFilter(kinds: [3], authors: profiles.map((p) => p.pubkey).toList())],
-          adapter: (event) => UserFollowings.fromEvent(event),
-        );
-      });
-    ```
+- Use the issue template
+- Include steps to reproduce
+- Provide Flutter/Dart version info
 
-    API reference (short)
-    ---------------------
+### 💡 Feature Requests
 
-    - `FlutterNostr.init({List<String> relays})` — initialize the client
-    - `FlutterNostrFeed({filters, parallelRequestRequestsHandler, builder})` —
-      feed widget
-    - `FlutterNostrFeedList` — list widget with built-in pagination and triggers
-    - `ParallelRequest<T>` / `ParallelRequestId<T>` — typed parallel request API
+- Describe the use case
+- Explain why it would be valuable
+- Consider contributing a PR
 
-    Example app walkthrough
-    -----------------------
+### 🔧 Pull Requests
 
-    The `example/` folder includes three screens:
+- Fork the repository
+- Create a feature branch
+- Add tests for new functionality
+- Update documentation
+- Submit a PR with a clear description
 
-    - `SimpleFeedScreen` — demonstrates a minimal feed with link detection.
-    - `SingleLayerParallelFeedScreen` — shows profile enrichment and displaying
-      avatars and names.
-    - `MultiLayerParallelFeedScreen` — demonstrates chaining requests and
-      aggregating results.
+### 📚 Example Contributions
 
-    Run it locally:
+Especially valuable contributions:
 
-    ```powershell
-    cd example
-    flutter pub get
-    flutter run
-    ```
+- New example screens demonstrating real use cases
+- Performance optimizations
+- Additional adapter examples
+- Error handling improvements
 
-    Tips for beginners
-    ------------------
+---
 
-    - Start with the minimal feed and inspect `example/` to see wiring and
-      navigation.
-    - Use small `limit` values in `NostrFilter` while developing to reduce
-      network noise and speed up iteration.
-    - Step through the code in `example/` to learn how `parallelRequestRequestsHandler`
-      is wired to `FlutterNostrFeed`.
+## 📋 Roadmap
 
-    Advanced topics
-    ---------------
+### 🎯 Version 0.2
 
-    - Error handling: parallel requests can fail for a step — results include an
-      `error` field for inspection.
-    - Caching: the example shows lifting results into state; you can add a cache
-      layer around the executor if needed.
+- [ ] Chat primitives (NIP-44)
+- [ ] Identity helpers and key management
+- [ ] Enhanced error handling
+- [ ] Performance improvements
 
-    Roadmap & contributing
-    ----------------------
+### 🚀 Future Versions
 
-    - v0.2: chat primitives (NIP-44), identity helpers
-    - Later: payments, NostrConnect, relay moderation
+- [ ] Payment integration (Lightning)
+- [ ] NostrConnect support
+- [ ] Relay moderation tools
+- [ ] Advanced caching strategies
+- [ ] WebSocket connection pooling
 
-    Contributing
-    ------------
+---
 
-    PRs and issues welcome. Adding an example screen that demonstrates a real
-    use-case (for example, reactions or threaded comments) is especially helpful.
+## 📄 License
 
-    License
-    -------
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-    MIT — see `LICENSE`.
+---
 
-    Maintainer
-    ----------
+## 🙏 Acknowledgments
 
-    See repository owner on GitHub. Open an issue or PR for questions.
+- Built on top of the excellent [dart_nostr](https://pub.dev/packages/dart_nostr) package
+- Inspired by the Nostr protocol's simplicity and power
+- Community feedback and contributions
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Nostr community**
+
+[⭐ Star this repo](https://github.com/your-username/flutter_nostr) • [🐛 Report issues](https://github.com/your-username/flutter_nostr/issues) • [💬 Join discussions](https://github.com/your-username/flutter_nostr/discussions)
+
+</div>
