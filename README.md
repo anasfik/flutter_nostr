@@ -153,60 +153,57 @@ ParallelRequest<T>(
 ```dart
  final profileFetchRequestId = ParallelRequestId<UserInfo>(id: 'unique-id-1');
 
-   FlutterNostrFeed(
-        filters: [
-          NostrFilter(
-            limit: 25,
-            kinds: [1], // posts kinds
-          ),
-        ],
-        parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
-          return ParallelRequest(
-            id: profileFetchRequestId,
-            filters: [
-              NostrFilter(
-                kinds: [0], // user details kind
-                authors: postEvents.map((e) => e.pubkey).toList(),
-              ),
-            ],
-            adapter: (event) {
-              return UserInfo.fromEvent(event);
-            },
-          );
-        },
-        builder: (context, data, options) {
-          return FlutterNostrFeedList(
-            data: data,
-            options: options,
-            itemBuilder: (context, NostrEvent postEvent, index, data, options) {
-              final postContent = postEvent.content != null
-                  ? postEvent.content!
-                  : "";
+FlutterNostrFeed(
+  filters: [
+    NostrFilter(
+      limit: 25,
+      kinds: [1], // posts kinds
+    ),
+  ],
+  parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
+    return ParallelRequest(
+      id: profileFetchRequestId,
+      filters: [
+        NostrFilter(
+          kinds: [0], // user details kind
+          authors: postEvents.map((e) => e.pubkey).toList(),
+        ),
+      ],
+      adapter: (event) {
+        return UserInfo.fromEvent(event);
+      },
+    );
+  },
+  builder: (context, data, options) {
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, NostrEvent postEvent, index, data, options) {
+        final postContent = postEvent.content != null ? postEvent.content! : "";
 
-             // This is how we access the requests results for a specific parallel request by its id
-              final profileFetchResults = data.parallelRequestResultsFor(
-                profileFetchRequestId,
-              );
+        // This is how we access the requests results for a specific parallel request by its id
+        final profileFetchResults = data.parallelRequestResultsFor(
+          profileFetchRequestId,
+        );
 
-              List<UserInfo> userResults =
-                  profileFetchResults?.adaptedResults ?? [];
+        List<UserInfo> userResults = profileFetchResults?.adaptedResults ?? [];
 
-              UserInfo? user = userResults
-                  .where((element) => element.event.pubkey == postEvent.pubkey)
-                  .firstOrNull;
+        UserInfo? user =
+            userResults
+                .where((element) => element.event.pubkey == postEvent.pubkey)
+                .firstOrNull;
 
-              final postOwnerName = user?.name.isEmpty ?? true
-                  ? "Loading Or Unknown"
-                  : user!.name;
+        final postOwnerName =
+            user?.name.isEmpty ?? true ? "Loading Or Unknown" : user!.name;
 
-              return ListTile(
-                title: Text(postOwnerName),
-                subtitle: Text(postContent),
-              );
-            },
-          );
-        },
-      ),
+        return ListTile(
+          title: Text(postOwnerName),
+          subtitle: Text(postContent),
+        );
+      },
+    );
+  },
+),
 ```
 
 #### Example 2: Feed with user profiles, user followings and user followers (Multi-Layer Feed)
@@ -215,100 +212,93 @@ ParallelRequest<T>(
  final profileFetchRequestId = ParallelRequestId<UserInfo>(id: 'unique-id-1');
  final followingsFetchRequestId = ParallelRequestId<UserFollowings>(id: 'unique-id-2');
 
-   FlutterNostrFeed(
+FlutterNostrFeed(
+  filters: [
+    NostrFilter(
+      limit: 25,
+      kinds: [1], // posts kinds
+    ),
+  ],
+  parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
+    return ParallelRequest(
+      id: profileFetchRequestId,
+      filters: [
+        NostrFilter(
+          kinds: [0], // user details kind
+          authors: postEvents.map((e) => e.pubkey).toList(),
+        ),
+      ],
+      adapter: (event) {
+        return UserInfo.fromEvent(event);
+      },
+    ).then<UserFollowings>((List<UserInfo> users) {
+      return ParallelRequest(
+        id: followingsFetchRequestId,
         filters: [
           NostrFilter(
-            limit: 25,
-            kinds: [1], // posts kinds
+            kinds: [3], // user followings kind
+            authors: users.map((u) => u.event.pubkey).toList(),
           ),
         ],
-        parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
-          return ParallelRequest(
-            id: profileFetchRequestId,
-            filters: [
-              NostrFilter(
-                kinds: [0], // user details kind
-                authors: postEvents.map((e) => e.pubkey).toList(),
+        adapter: (event) {
+          return UserFollowings.fromEvent(event);
+        },
+      );
+    });
+  },
+  builder: (context, data, options) {
+    return FlutterNostrFeedList(
+      data: data,
+      options: options,
+      itemBuilder: (context, NostrEvent postEvent, index, data, options) {
+        final postContent = postEvent.content != null ? postEvent.content! : "";
+
+        final profileFetchResults = data.parallelRequestResultsFor(
+          profileFetchRequestId,
+        );
+
+        final followingsFetchResults = data.parallelRequestResultsFor(
+          followingsFetchRequestId,
+        );
+
+        List<UserInfo> userResults = profileFetchResults?.adaptedResults ?? [];
+
+        List<UserFollowings> followingsResults =
+            followingsFetchResults?.adaptedResults ?? [];
+
+        UserInfo? user =
+            userResults
+                .where((element) => element.event.pubkey == postEvent.pubkey)
+                .firstOrNull;
+
+        UserFollowings? userFollowings =
+            followingsResults
+                .where((element) => element.pubkey == postEvent.pubkey)
+                .firstOrNull;
+
+        final postOwnerName =
+            user?.name.isEmpty ?? true ? "Loading Or Unknown" : user!.name;
+
+        final postOwnerFollowingsCount = userFollowings?.followings.length ?? 0;
+
+        return ListTile(
+          title: Text(postOwnerName),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(postContent),
+              SizedBox(height: 4),
+              Text(
+                'Followings: $postOwnerFollowingsCount',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
-            adapter: (event) {
-              return UserInfo.fromEvent(event);
-            },
-          ).then<UserFollowings>((List<UserInfo> users) {
-            return ParallelRequest(
-              id: followingsFetchRequestId,
-              filters: [
-                NostrFilter(
-                  kinds: [3], // user followings kind
-                  authors: users.map((u) => u.event.pubkey).toList(),
-                ),
-              ],
-              adapter: (event) {
-                return UserFollowings.fromEvent(event);
-              },
-            );
-          });
-        },
-        builder: (context, data, options) {
-          return FlutterNostrFeedList(
-            data: data,
-            options: options,
-            itemBuilder: (context, NostrEvent postEvent, index, data, options) {
-              final postContent = postEvent.content != null
-                  ? postEvent.content!
-                  : "";
-
-              final profileFetchResults = data.parallelRequestResultsFor(
-                profileFetchRequestId,
-              );
-
-              final followingsFetchResults = data.parallelRequestResultsFor(
-                followingsFetchRequestId,
-              );
-
-              List<UserInfo> userResults =
-                  profileFetchResults?.adaptedResults ?? [];
-
-              List<UserFollowings> followingsResults =
-                  followingsFetchResults?.adaptedResults ?? [];
-
-              UserInfo? user = userResults
-                  .where((element) => element.event.pubkey == postEvent.pubkey)
-                  .firstOrNull;
-
-              UserFollowings? userFollowings = followingsResults
-                  .where((element) => element.pubkey == postEvent.pubkey)
-                  .firstOrNull;
-
-              final postOwnerName = user?.name.isEmpty ?? true
-                  ? "Loading Or Unknown"
-                  : user!.name;
-
-              final postOwnerFollowingsCount =
-                  userFollowings?.followings.length ?? 0;
-
-              return ListTile(
-                title: Text(postOwnerName),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(postContent),
-                    SizedBox(height: 4),
-                    Text(
-                      'Followings: $postOwnerFollowingsCount',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-
-            },
-          );
-        },
-      ),
+          ),
+        );
+      },
+    );
+  },
+)
 ```
 
 ## 🎮 Example App
