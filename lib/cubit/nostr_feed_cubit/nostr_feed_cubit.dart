@@ -16,6 +16,9 @@ class NostrFeedCubit extends Cubit<NostrFeedState> {
 
   // Queue of pending batches to process sequentially
   final List<List<NostrEvent>> _pendingParallelBatches = [];
+
+  final eventsHandleStatusRegister = <String, bool>{};
+
   bool _isProcessingParallel = false;
 
   final NostrService service;
@@ -35,7 +38,9 @@ class NostrFeedCubit extends Cubit<NostrFeedState> {
   }) : super(NostrFeedInitial(eventsRequestResponseEntries: [])) {
     _executor = ParallelRequestExecutor(service: service);
     loadLayerOneFeedData();
+    _preparePeriodicParallelLoading();
   }
+  Timer? _debounceTimer;
 
   Future<void> loadLayerOneFeedData({DateTime? since, DateTime? until}) async {
     try {
@@ -132,7 +137,9 @@ class NostrFeedCubit extends Cubit<NostrFeedState> {
 
     try {
       while (_pendingParallelBatches.isNotEmpty) {
-        final events = _pendingParallelBatches.removeAt(0);
+        final events = _pendingParallelBatches.removeAt(0).where((event) {
+          return !eventsHandleStatusRegister.containsKey(event.id);
+        }).toList();
 
         final rootReq = parallelRequestRequestsHandler?.call(
           state.parallelRequestResults,
@@ -151,17 +158,21 @@ class NostrFeedCubit extends Cubit<NostrFeedState> {
 
           final parallelRequestResults = {...state.parallelRequestResults};
 
-          results.entries.forEach((entry) {
+          for (var entry in results.entries) {
             parallelRequestResults[entry.key] = [
               ...?parallelRequestResults[entry.key],
               entry.value,
             ];
-          });
+          }
 
           // Emit the parallel request results to the state
           emitIfNotClosed(
             state.copyWith(parallelRequestResults: parallelRequestResults),
           );
+
+          for (var event in events) {
+            eventsHandleStatusRegister[event.id ?? event.toString()] = true;
+          }
         } catch (e) {
           print('Error executing parallel request: $e');
 
@@ -176,21 +187,27 @@ class NostrFeedCubit extends Cubit<NostrFeedState> {
   void registerEntityForNextParallelRequest(NostrEvent event) {
     eventsQueueList.add(event);
 
-    _debounceExecuteParallelRequest();
-  }
-
-  Timer? _debounceTimer;
-
-  void _debounceExecuteParallelRequest() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(Duration(milliseconds: 300), () {
+    if (eventsQueueList.length > 3) {
       executeParallelRequestIfNeeded();
-    });
+    }
   }
 
   void emitIfNotClosed(NostrFeedState newState) {
     if (!isClosed) {
       emit(newState);
     }
+  }
+
+  void _preparePeriodicParallelLoading() {
+    _debounceTimer = Timer.periodic(Duration(milliseconds: 1000), (timer) {
+      executeParallelRequestIfNeeded();
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _debounceTimer?.cancel();
+
+    return super.close();
   }
 }

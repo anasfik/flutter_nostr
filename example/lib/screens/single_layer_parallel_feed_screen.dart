@@ -78,7 +78,7 @@ class SingleLayerParallelFeedScreen extends AppScreen {
               final text = event.content ?? '';
 
               // Use fetched profile results (single layer)
-              final profileFetchResults = data.locateParallelRequestResultsById(
+              final profileFetchResults = data.parallelRequestResultsFor(
                 profileFetchRequestId,
               );
 

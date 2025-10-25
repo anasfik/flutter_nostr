@@ -1,6 +1,7 @@
 import 'package:dart_nostr/dart_nostr.dart';
 
 class NostrService {
+  final connectionTimeout = Duration(seconds: 15);
   late final Nostr instance;
   final List<String> relays;
 
@@ -8,13 +9,32 @@ class NostrService {
     instance = Nostr();
   }
 
+  Future<void> reconnect() async {
+    try {
+      await instance.services.relays.reconnectToRelays(
+        onRelayListening: (_, __, ___) {},
+        onRelayConnectionError: (_, __, ___) {},
+        onRelayConnectionDone: (_, __) {},
+        retryOnError: false,
+        retryOnClose: false,
+        shouldReconnectToRelayOnNotice: true,
+        connectionTimeout: connectionTimeout,
+        ignoreConnectionException: false,
+        lazyListeningToRelays: false,
+      );
+    } catch (e) {
+      print(e);
+    }
+  }
+
   Future<void> connect() async {
     try {
       await instance.services.relays.init(
         relaysUrl: relays,
-        connectionTimeout: Duration(seconds: 15),
+        connectionTimeout: connectionTimeout,
         shouldReconnectToRelayOnNotice: true,
         ignoreConnectionException: false,
+        ensureToClearRegistriesBeforeStarting: true,
       );
     } catch (e) {
       //

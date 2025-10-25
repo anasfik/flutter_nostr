@@ -112,7 +112,6 @@ class FlutterNostrFeedList extends StatelessWidget {
             onVisibilityChanged: (info) {
               if (info.visibleFraction > 0) {
                 options.onRegisterEntityForNextParallelRequest?.call(event);
-                options.onRunParallelRequest?.call();
               }
             },
             child: itemBuilder != null
