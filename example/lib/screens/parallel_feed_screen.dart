@@ -17,7 +17,7 @@ class MultiLayerParallelFeedScreen extends AppScreen {
       id: 'profile-fetch',
     );
 
-    final profileFollowings = ParallelRequestId<UserFollowings>(
+    final followingsFetchRequestId = ParallelRequestId<UserFollowings>(
       id: 'profile-followings',
     );
 
@@ -56,105 +56,86 @@ class MultiLayerParallelFeedScreen extends AppScreen {
       ),
       body: FlutterNostrFeed(
         filters: [
-          NostrFilter(limit: 10, kinds: [30402]),
+          NostrFilter(
+            limit: 25,
+            kinds: [1], // posts kinds
+          ),
         ],
-        parallelRequestRequestsHandler: (parallelRequestResults, events) {
-          final req =
-              ParallelRequest(
-                id: profileFetchRequestId,
-                filters: [
-                  NostrFilter(
-                    kinds: [0],
-                    authors: events.map((e) => e.pubkey).toList(),
-                  ),
-                ],
-                adapter: (event) {
-                  return UserInfo.fromEvent(event);
-                },
-              ).then((users) {
-                return ParallelRequest(
-                  id: profileFollowings,
-                  filters: [
-                    NostrFilter(
-                      kinds: [3],
-                      authors: users.map((u) => u.pubkey).toList(),
-                    ),
-                  ],
-                  adapter: (event) {
-                    return UserFollowings.fromEvent(event);
-                  },
-                );
-              });
-
-          return req;
+        parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
+          return ParallelRequest(
+            id: profileFetchRequestId,
+            filters: [
+              NostrFilter(
+                kinds: [0], // user details kind
+                authors: postEvents.map((e) => e.pubkey).toList(),
+              ),
+            ],
+            adapter: (event) {
+              return UserInfo.fromEvent(event);
+            },
+          ).then<UserFollowings>((List<UserInfo> users) {
+            return ParallelRequest(
+              id: followingsFetchRequestId,
+              filters: [
+                NostrFilter(
+                  kinds: [3], // user followings kind
+                  authors: users.map((u) => u.event.pubkey).toList(),
+                ),
+              ],
+              adapter: (event) {
+                return UserFollowings.fromEvent(event);
+              },
+            );
+          });
         },
         builder: (context, data, options) {
           return FlutterNostrFeedList(
             data: data,
             options: options,
-            itemBuilder: (context, event, index, data, options) {
-              final text = event.content ?? '';
-              // Use fetched profile results
-              final profileFetchResults = data.locateParallelRequestResultsById(
+            itemBuilder: (context, NostrEvent postEvent, index, data, options) {
+              final postContent = postEvent.content != null
+                  ? postEvent.content!
+                  : "";
+
+              final profileFetchResults = data.parallelRequestResultsFor(
                 profileFetchRequestId,
               );
 
-              final userResults = profileFetchResults?.adaptedResults ?? [];
-
-              final user = userResults.firstWhere(
-                (element) => element.event.pubkey == event.pubkey,
-                orElse: () => UserInfo.empty(),
+              final followingsFetchResults = data.parallelRequestResultsFor(
+                followingsFetchRequestId,
               );
 
-              final image = (user.picture.isNotEmpty)
-                  ? NetworkImage(user.picture)
-                  : null;
+              List<UserInfo> userResults =
+                  profileFetchResults?.adaptedResults ?? [];
 
-              final name = (user.name.isNotEmpty) ? user.name : event.pubkey;
+              List<UserFollowings> followingsResults =
+                  followingsFetchResults?.adaptedResults ?? [];
 
-              final userFollowings =
-                  data
-                      .locateParallelRequestResultsById(profileFollowings)
-                      ?.adaptedResults ??
-                  [];
+              UserInfo? user = userResults
+                  .where((element) => element.event.pubkey == postEvent.pubkey)
+                  .firstOrNull;
 
-              final followings = userFollowings.firstWhere(
-                (element) => element.pubkey == event.pubkey,
-                orElse: () => UserFollowings(pubkey: '', followings: []),
-              );
+              UserFollowings? userFollowings = followingsResults
+                  .where((element) => element.pubkey == postEvent.pubkey)
+                  .firstOrNull;
 
+              final postOwnerName = user?.name.isEmpty ?? true
+                  ? "Loading Or Unknown"
+                  : user!.name;
+              final postOwnerFollowingsCount =
+                  userFollowings?.followings.length ?? 0;
               return ListTile(
-                tileColor: index.isEven ? Colors.grey[200] : Colors.transparent,
-                key: ValueKey('item-$index'),
-                leading: Column(
+                title: Text(postOwnerName),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      backgroundImage: image,
-                      child: (image == null)
-                          ? Text(name.substring(0, 1).toUpperCase())
-                          : null,
-                    ),
+                    Text(postContent),
                     SizedBox(height: 4),
-                    Flexible(
-                      child: Text(
-                        '${followings.followings.length} followings'.substring(
-                          0,
-                          '${followings.followings.length} followings'.length >
-                                  15
-                              ? 15
-                              : '${followings.followings.length} followings'
-                                    .length,
-                        ),
-                        style: const TextStyle(fontSize: 10),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Text(
+                      'Followings: $postOwnerFollowingsCount',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
-                ),
-
-                title: Text(name),
-                subtitle: Text(
-                  text.substring(0, text.length > 200 ? 200 : text.length),
                 ),
               );
             },

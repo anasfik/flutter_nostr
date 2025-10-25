@@ -17,7 +17,7 @@ class FlutterNostrFeedBuilderData<T> extends Equatable {
     this.eventRequestResponseEntries = const [],
   });
 
-  List<ParallelEventsRequestResponse<R>>? locateParallelRequestResultsById<R>(
+  List<ParallelEventsRequestResponse<R>>? parallelRequestResultsFor<R>(
     ParallelRequestId<R> requestId,
   ) {
     final parralelRequests = parallelRequestResults?[requestId.id];
@@ -31,7 +31,9 @@ class FlutterNostrFeedBuilderData<T> extends Equatable {
 
   List<NostrEvent> get events {
     final list = eventRequestResponseEntries.expand((e) => e.events).toList();
-    list.sort((a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime.now()) ?? 0);
+    list.sort(
+      (a, b) => b.createdAt?.compareTo(a.createdAt ?? DateTime.now()) ?? 0,
+    );
     return list;
   }
 
