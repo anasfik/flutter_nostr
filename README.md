@@ -11,6 +11,8 @@
 
 [📖 Documentation](#-documentation) • [🎯 Quick Start](#-quick-start) • [💡 Examples](#-examples) • [🔧 API Reference](#-api-reference) • [🤝 Contributing](#-contributing)
 
+<img width="1640" height="856" alt="New Project" src="https://github.com/user-attachments/assets/6d356d16-a3a0-4017-94de-c79023cccabd" />
+
 </div>
 
 ---
