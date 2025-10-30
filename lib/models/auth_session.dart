@@ -55,7 +55,7 @@ class BaseAuthSession {
   }) async {
     switch (type) {
       case AuthType.bunker:
-      return (this as BunkerAuthSession).createEvent(
+        return (this as BunkerAuthSession).createEvent(
           kind: kind,
           content: content,
           tags: tags,
@@ -73,8 +73,9 @@ class BaseAuthSession {
           kind: kind,
           content: content,
           tags: tags,
-          createdAt: createdAt, 
-         )};
+          createdAt: createdAt,
+        );
+    }
   }
 
   /// Convert session to JSON for storage
@@ -109,7 +110,7 @@ class BaseAuthSession {
   @override
   int get hashCode => id.hashCode;
 }
-@Collection()
+
 /// Bunker authentication session (signs with remote bunker service)
 class BunkerAuthSession extends BaseAuthSession {
   final String bunkerUrl;
