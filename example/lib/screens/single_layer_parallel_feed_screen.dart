@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:example/screens/screen.dart';
+import 'package:example/widgets/parsed_content_renderer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
 
@@ -233,25 +234,12 @@ class SingleLayerParallelFeedScreen extends AppScreen {
                             ],
                           ),
                           SizedBox(height: 12),
-                          // Content
-                          if (text.isNotEmpty)
-                            Text(
-                              text.summarize(250),
-                              style: TextStyle(
-                                fontSize: 15,
-                                height: 1.4,
-                                color: Colors.grey[800],
-                              ),
-                            )
-                          else
-                            Text(
-                              'No content',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey[500],
-                              ),
-                            ),
+                          // Content with parsing
+                          ParsedContentRenderer(
+                            text: text,
+                            maxLength: 250,
+                            showMedia: false,
+                          ),
                           SizedBox(height: 12),
                           // Footer with profile status and actions
                           Row(
@@ -495,12 +483,5 @@ class UserInfo {
         sig: '',
       ),
     );
-  }
-}
-
-extension on String {
-  String summarize(int maxLength) {
-    if (length <= maxLength) return this;
-    return '${substring(0, maxLength)}...';
   }
 }

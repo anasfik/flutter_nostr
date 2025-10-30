@@ -16,12 +16,12 @@ abstract class FlutterNostr {
 
   static Future<void> init({required List<String> relays}) async {
     try {
-      instance = NostrService(relays: relays);
+      instance = NostrService.instance;
 
       if (isConnected) {
         await instance.reconnect();
       } else {
-        await instance.connect();
+        await instance.connect(relays: relays);
       }
 
       isConnected = true;

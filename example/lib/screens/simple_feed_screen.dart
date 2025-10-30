@@ -1,8 +1,7 @@
 import 'package:example/screens/screen.dart';
+import 'package:example/widgets/parsed_content_renderer.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
-import 'package:linkify/linkify.dart';
 
 class SimpleFeedScreen extends AppScreen {
   SimpleFeedScreen({
@@ -164,30 +163,12 @@ class SimpleFeedScreen extends AppScreen {
                             ],
                           ),
                           SizedBox(height: 12),
-                          // Content
-                          if (text.isNotEmpty)
-                            Linkify(
-                              text: text.summarize(200),
-                              linkifiers: [UrlLinkifier()],
-                              style: TextStyle(
-                                fontSize: 15,
-                                height: 1.4,
-                                color: Colors.grey[800],
-                              ),
-                              linkStyle: TextStyle(
-                                color: Colors.blue[600],
-                                decoration: TextDecoration.underline,
-                              ),
-                            )
-                          else
-                            Text(
-                              'No content',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey[500],
-                              ),
-                            ),
+                          // Content with parsing
+                          ParsedContentRenderer(
+                            text: text,
+                            maxLength: 300,
+                            showMedia: false,
+                          ),
                           SizedBox(height: 12),
                           // Footer with event ID
                           Row(
@@ -353,12 +334,5 @@ class SimpleFeedScreen extends AppScreen {
         duration: Duration(seconds: 2),
       ),
     );
-  }
-}
-
-extension on String {
-  String summarize(int maxLength) {
-    if (length <= maxLength) return this;
-    return '${substring(0, maxLength)}...';
   }
 }

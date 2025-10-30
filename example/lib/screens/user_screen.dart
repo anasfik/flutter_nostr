@@ -1,19 +1,22 @@
 import 'dart:convert';
 
-import 'package:example/screens/screen.dart';
 import 'package:example/widgets/parsed_content_renderer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
 
-class MultiLayerParallelFeedScreen extends AppScreen {
-  MultiLayerParallelFeedScreen({
-    super.key,
-    super.title = 'Multi-Layer Parallel Feed Screen',
-    super.routeName = '/multi-layer-parallel',
-  });
+class UserScreen extends StatelessWidget {
+  UserScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final pubkey = ModalRoute.of(context)!.settings.arguments as String?;
+    if (pubkey == null || pubkey.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text("User Details")),
+        body: Center(child: Text("No public key provided.")),
+      );
+    }
+
     final profileFetchRequestId = ParallelRequestId<UserInfo>(
       id: 'profile-fetch',
     );
@@ -25,43 +28,12 @@ class MultiLayerParallelFeedScreen extends AppScreen {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(title),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.info_outline),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Multi-Layer Parallel Feed Screen'),
-                  content: Text(
-                    'This screen demonstrates multiple layers of parallel requests with chaining.\n\n'
-                    'Features:\n'
-                    '• Fetches main events (kind 30402)\n'
-                    '• Layer 1: Fetches user profiles (kind 0) for all authors\n'
-                    '• Layer 2: Fetches user followings (kind 3) based on Layer 1 results\n'
-                    '• Displays events with profile info AND following counts\n'
-                    '• Shows the power of chaining parallel requests\n\n'
-                    'This demonstrates how to build complex data relationships using the parallel request system.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text('Got it'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+        title: Text("User Details"),
+        actions: [IconButton(icon: Icon(Icons.info_outline), onPressed: () {})],
       ),
       body: FlutterNostrFeed(
         filters: [
-          NostrFilter(
-            limit: 25,
-            kinds: [1], // posts kinds
-          ),
+          NostrFilter(authors: [pubkey]),
         ],
         parallelRequestRequestsHandler: (_, List<NostrEvent> postEvents) {
           return ParallelRequest(
