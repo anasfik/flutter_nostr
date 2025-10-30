@@ -303,6 +303,170 @@ FlutterNostrFeed(
 )
 ```
 
+## One-Time Event Fetching
+
+Sometimes you don't need a full feed with pagination and infinite scroll—you just need to fetch a specific event or a small set of events once. The package provides two simple widgets for these use cases.
+
+### OneTimeEventBuilder
+
+Use `OneTimeEventBuilder` when you need to fetch a single event based on a filter. This is perfect for displaying a specific user profile, a referenced note, or any single Nostr event.
+
+#### Key Features
+
+- 🎯 **Single Event**: Fetches one event matching your filter
+- ⚡ **FutureBuilder-based**: Built on Flutter's `FutureBuilder` for simple state management
+- 🔄 **Loading States**: Built-in handling for loading, error, and success states
+- 🎨 **Flexible Builder**: Full control over how to render the event
+
+#### Example: Display a User Profile
+
+```dart
+OneTimeEventBuilder(
+  filter: NostrFilter(
+    kinds: [0], // metadata/profile kind
+    authors: ['npub1...'], // specific user's pubkey
+    limit: 1,
+  ),
+  builder: (context, isLoading, error, subscriptionId, event) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(
+        child: Text('Error loading profile: $error'),
+      );
+    }
+
+    if (event == null) {
+      return Center(child: Text('Profile not found'));
+    }
+
+    final metadata = Metadata.fromEvent(event);
+    
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundImage: metadata.picture != null
+                ? NetworkImage(metadata.picture!)
+                : null,
+            ),
+            SizedBox(height: 16),
+            Text(
+              metadata.name ?? 'Unknown',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              metadata.about ?? 'No bio',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+)
+```
+
+### OneTimeEventsBuilder
+
+Use `OneTimeEventsBuilder` when you need to fetch multiple events at once. This is ideal for displaying a small collection of events, such as the latest posts from a user or a list of referenced events.
+
+#### Key Features
+
+- 📚 **Multiple Events**: Fetches multiple events matching your filters
+- ⚡ **FutureBuilder-based**: Built on Flutter's `FutureBuilder` for simple state management
+- 🔄 **Loading States**: Built-in handling for loading, error, and success states
+- 🎨 **Flexible Builder**: Full control over how to render the events list
+
+#### Example: Display Latest Posts from a User
+
+```dart
+OneTimeEventsBuilder(
+  filters: [
+    NostrFilter(
+      kinds: [1], // text note kind
+      authors: ['npub1...'], // specific user's pubkey
+      limit: 10,
+    ),
+  ],
+  builder: (context, isLoading, error, subscriptionId, events) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(
+        child: Text('Error loading posts: $error'),
+      );
+    }
+
+    if (events == null || events.isEmpty) {
+      return Center(child: Text('No posts found'));
+    }
+
+    return ListView.builder(
+      itemCount: events.length,
+      itemBuilder: (context, index) {
+        final event = events[index];
+        final timestamp = DateTime.fromMillisecondsSinceEpoch(
+          event.createdAt * 1000,
+        );
+
+        return ListTile(
+          title: Text(event.content ?? 'No content'),
+          subtitle: Text(
+            'Posted: ${timestamp.toString().substring(0, 16)}',
+          ),
+          leading: Icon(Icons.note),
+        );
+      },
+    );
+  },
+)
+```
+
+#### Example: Fetch Multiple Specific Events by ID
+
+```dart
+OneTimeEventsBuilder(
+  filters: [
+    NostrFilter(
+      ids: [
+        'event_id_1',
+        'event_id_2',
+        'event_id_3',
+      ],
+    ),
+  ],
+  builder: (context, isLoading, error, subscriptionId, events) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(child: Text('Error: $error'));
+    }
+
+    final eventMap = {
+      for (var event in events ?? []) event.id: event
+    };
+
+    return Column(
+      children: [
+        _buildEventCard(eventMap['event_id_1']),
+        _buildEventCard(eventMap['event_id_2']),
+        _buildEventCard(eventMap['event_id_3']),
+      ],
+    );
+  },
+)
+```
+
 ## 🎮 Example App
 
 The package includes a comprehensive example app you can run and explore visually different use cases and implementations, simply run:
