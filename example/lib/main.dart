@@ -10,6 +10,7 @@ import 'screens/auth_screen.dart';
 import 'screens/create_post_screen.dart';
 
 void main() async {
+  
   await FlutterNostr.init(relays: ['wss://relay.nostr.band']);
 
   runApp(const MyApp());
@@ -39,7 +40,7 @@ class _MyAppState extends State<MyApp> {
       title: 'Flutter Nostr Examples',
       routes: {
         '/': (context) => const HomeScreen(),
-        '/user': (context) =>  UserScreen(),
+        '/user': (context) => UserScreen(),
         ...Map.fromEntries(
           MyApp.routes.map(
             (screen) => MapEntry(screen.routeName, (context) => screen),

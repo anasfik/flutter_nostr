@@ -14,13 +14,20 @@ dependencies:
     sdk: flutter
   flutter_bloc: ^9.1.1
   flutter_linkify: ^6.0.0
-  isar: ^2.1.4
+  isar: ^3.1.0
+  isar_flutter_libs: ^3.1.0+1
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.2
   visibility_detector: ^0.4.0+2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  isar_generator: ^3.1.0+1
+  build_runner: ^2.4.13
+  
+  
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

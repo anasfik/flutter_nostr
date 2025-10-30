@@ -1,26 +1,50 @@
 import 'package:dart_nostr/dart_nostr.dart';
 import 'package:flutter_nostr/data_source/nostr_service.dart';
+import 'package:flutter_nostr/flutter_nostr.dart';
 import 'package:flutter_nostr/models/nostr_auth_options.dart';
+import 'package:isar/isar.dart';
 
+part 'auth_session.g.dart';
+
+@Collection()
 /// Base class for all authentication sessions
-abstract class BaseAuthSession {
+class BaseAuthSession {
+  Id get isarId => fastHash(id);
+
   final String id;
   final String pubkey;
+
+  @Index()
+  @enumerated
   final AuthType type;
+
   final DateTime createdAt;
-  final Map<String, dynamic>? userDetails;
 
   BaseAuthSession({
     required this.id,
     required this.pubkey,
     required this.type,
-    Map<String, dynamic>? userDetails,
-    DateTime? createdAt,
-  }) : userDetails = userDetails,
-       createdAt = createdAt ?? DateTime.now();
+    required this.createdAt,
+  });
 
   /// Check if this session can sign events
   bool get canSign => type.canSign;
+
+  /// FNV-1a 64bit hash algorithm optimized for Dart Strings
+  int fastHash(String string) {
+    var hash = 0xcbf29ce484222325;
+
+    var i = 0;
+    while (i < string.length) {
+      final codeUnit = string.codeUnitAt(i++);
+      hash ^= codeUnit >> 8;
+      hash *= 0x100000001b3;
+      hash ^= codeUnit & 0xFF;
+      hash *= 0x100000001b3;
+    }
+
+    return hash;
+  }
 
   /// Create and sign an event (implemented by subclasses)
   Future<NostrEvent> createEvent({
@@ -28,10 +52,35 @@ abstract class BaseAuthSession {
     required String content,
     List<List<String>>? tags,
     DateTime? createdAt,
-  });
+  }) async {
+    switch (type) {
+      case AuthType.bunker:
+      return (this as BunkerAuthSession).createEvent(
+          kind: kind,
+          content: content,
+          tags: tags,
+          createdAt: createdAt,
+        );
+      case AuthType.privateKey:
+        return (this as PrivateKeyAuthSession).createEvent(
+          kind: kind,
+          content: content,
+          tags: tags,
+          createdAt: createdAt,
+        );
+      case AuthType.pubkey:
+        return (this as PubkeyAuthSession).createEvent(
+          kind: kind,
+          content: content,
+          tags: tags,
+          createdAt: createdAt, 
+         )};
+  }
 
   /// Convert session to JSON for storage
-  Map<String, dynamic> toJson();
+  Map<String, dynamic> toJson() {
+    throw UnimplementedError('toJson must be implemented by subclasses');
+  }
 
   /// Create session from JSON
   static BaseAuthSession fromJson(Map<String, dynamic> json) {
@@ -60,7 +109,7 @@ abstract class BaseAuthSession {
   @override
   int get hashCode => id.hashCode;
 }
-
+@Collection()
 /// Bunker authentication session (signs with remote bunker service)
 class BunkerAuthSession extends BaseAuthSession {
   final String bunkerUrl;
@@ -70,9 +119,8 @@ class BunkerAuthSession extends BaseAuthSession {
     required super.id,
     required super.pubkey,
     required this.bunkerUrl,
+    required super.createdAt,
     this.token,
-    super.userDetails,
-    super.createdAt,
   }) : super(type: AuthType.bunker);
 
   @override
@@ -105,7 +153,7 @@ class BunkerAuthSession extends BaseAuthSession {
       'type': type.name,
       'bunkerUrl': bunkerUrl,
       'token': token,
-      'userDetails': userDetails,
+
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -116,7 +164,7 @@ class BunkerAuthSession extends BaseAuthSession {
       pubkey: json['pubkey'] as String,
       bunkerUrl: json['bunkerUrl'] as String,
       token: json['token'] as String?,
-      userDetails: json['userDetails'] as Map<String, dynamic>?,
+
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -130,8 +178,8 @@ class PrivateKeyAuthSession extends BaseAuthSession {
     required super.id,
     required super.pubkey,
     required this.privateKey,
-    super.userDetails,
-    super.createdAt,
+
+    required super.createdAt,
   }) : super(type: AuthType.privateKey);
 
   @override
@@ -163,7 +211,7 @@ class PrivateKeyAuthSession extends BaseAuthSession {
       'pubkey': pubkey,
       'type': type.name,
       'privateKey': privateKey,
-      'userDetails': userDetails,
+
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -173,7 +221,7 @@ class PrivateKeyAuthSession extends BaseAuthSession {
       id: json['id'] as String,
       pubkey: json['pubkey'] as String,
       privateKey: json['privateKey'] as String,
-      userDetails: json['userDetails'] as Map<String, dynamic>?,
+
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -184,8 +232,7 @@ class PubkeyAuthSession extends BaseAuthSession {
   PubkeyAuthSession({
     required super.id,
     required super.pubkey,
-    super.userDetails,
-    super.createdAt,
+    required super.createdAt,
   }) : super(type: AuthType.pubkey);
 
   @override
@@ -204,7 +251,7 @@ class PubkeyAuthSession extends BaseAuthSession {
       'id': id,
       'pubkey': pubkey,
       'type': type.name,
-      'userDetails': userDetails,
+
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -213,7 +260,7 @@ class PubkeyAuthSession extends BaseAuthSession {
     return PubkeyAuthSession(
       id: json['id'] as String,
       pubkey: json['pubkey'] as String,
-      userDetails: json['userDetails'] as Map<String, dynamic>?,
+
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }

@@ -62,101 +62,103 @@ class _AuthContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<BaseAuthSession?>(
-      stream: options.sessionManager.currentSessionStream,
-      initialData: options.sessionManager.currentSession,
-      builder: (context, snapshot) {
-        final currentSession = snapshot.data;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildCurrentSessionCard(context, currentSession),
-              SizedBox(height: 24),
-              _buildCreateSessionSection(context),
-              SizedBox(height: 24),
-              _buildSessionsList(context),
-            ],
-          ),
-        );
-      },
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCurrentSessionCard(context),
+          SizedBox(height: 24),
+          _buildCreateSessionSection(context),
+          SizedBox(height: 24),
+          _buildSessionsList(context),
+        ],
+      ),
     );
   }
 
-  Widget _buildCurrentSessionCard(
-    BuildContext context,
-    BaseAuthSession? session,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: session != null
-                ? [Colors.blue[400]!, Colors.purple[400]!]
-                : [Colors.grey[400]!, Colors.grey[600]!],
+  Widget _buildCurrentSessionCard(BuildContext context) {
+    return StreamBuilder(
+      stream: options.sessionManager.currentSessionStream,
+
+      builder: (context, snapshot) {
+        final session = snapshot.data;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: session != null
+                    ? [Colors.blue[400]!, Colors.purple[400]!]
+                    : [Colors.grey[400]!, Colors.grey[600]!],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.account_circle, color: Colors.white, size: 32),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current Session',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                Row(
+                  children: [
+                    Icon(Icons.account_circle, color: Colors.white, size: 32),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Session',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            session?.pubkey ?? 'No active session',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      Text(
-                        session?.pubkey ?? 'No active session',
-                        style: TextStyle(
+                    ),
+                    if (session != null)
+                      Chip(
+                        label: Text(session.type.name.toUpperCase()),
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        labelStyle: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+                if (session != null) ...[
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        session.canSign ? 'Can sign events' : 'Read-only',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ],
                   ),
-                ),
-                if (session != null)
-                  Chip(
-                    label: Text(session.type.name.toUpperCase()),
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                ],
               ],
             ),
-            if (session != null) ...[
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    session.canSign ? 'Can sign events' : 'Read-only',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -232,62 +234,77 @@ class _AuthContent extends StatelessWidget {
   }
 
   Widget _buildSessionsList(BuildContext context) {
-    return FutureBuilder<List<BaseAuthSession>>(
-      future: Future.value(options.sessionManager.allSessions),
+    return StreamBuilder<List<BaseAuthSession>>(
+      stream: options.sessionManager.allSessions(),
       builder: (context, snapshot) {
         final sessions = snapshot.data ?? [];
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'All Sessions (${sessions.length})',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                if (sessions.isEmpty) ...[
-                  SizedBox(height: 24),
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.account_circle_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'No sessions yet',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
+        return StreamBuilder(
+          stream: options.sessionManager.currentSessionStream,
+          builder: (context, asyncSnapshot) {
+            final currentSession = asyncSnapshot.data;
+            return Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'All Sessions (${sessions.length})',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
                     ),
-                  ),
-                ] else ...[
-                  SizedBox(height: 12),
-                  ...sessions.map(
-                    (session) => _buildSessionItem(context, session),
-                  ),
-                ],
-              ],
-            ),
-          ),
+                    if (sessions.isEmpty) ...[
+                      SizedBox(height: 24),
+                      Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.account_circle_outlined,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'No sessions yet',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(height: 12),
+                      ...sessions.map(
+                        (session) => _buildSessionItem(
+                          context,
+                          session,
+                          currentSession?.id != null &&
+                              session.id == currentSession?.id,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildSessionItem(BuildContext context, BaseAuthSession session) {
+  Widget _buildSessionItem(
+    BuildContext context,
+    BaseAuthSession session,
+    bool isCurrent,
+  ) {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(12),
@@ -328,18 +345,30 @@ class _AuthContent extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () => _deleteSession(context, session),
-          ),
-          IconButton(
-            icon: Icon(Icons.remove_red_eye, color: Colors.purpleAccent),
-            onPressed: () => _userDetailsScreen(context, session),
-          ),
-          IconButton(
-            icon: Icon(Icons.login, color: Colors.blue),
-            onPressed: () => _switchSession(context, session),
-          ),
+          if (isCurrent)
+            Chip(
+              label: Text('Active'),
+              backgroundColor: Colors.green.withOpacity(0.2),
+              labelStyle: TextStyle(
+                color: Colors.green[800],
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          else ...[
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () => _deleteSession(context, session),
+            ),
+            IconButton(
+              icon: Icon(Icons.remove_red_eye, color: Colors.purpleAccent),
+              onPressed: () => _userDetailsScreen(context, session),
+            ),
+
+            IconButton(
+              icon: Icon(Icons.login, color: Colors.blue),
+              onPressed: () => _switchSession(context, session),
+            ),
+          ],
         ],
       ),
     );
@@ -559,6 +588,8 @@ class _AuthContent extends StatelessWidget {
                       : privateKeyController.text;
                   if (keyToUse.isNotEmpty) {
                     _createPrivateKeySession(context, keyToUse);
+
+                    Navigator.of(context).pop();
                   }
                 },
                 icon: Icon(Icons.check),
@@ -666,6 +697,8 @@ class _AuthContent extends StatelessWidget {
     try {
       final pubkey = options.keysManager.getPublicKeyFromPrivateKey(privateKey);
       final session = PrivateKeyAuthSession(
+        createdAt: DateTime.now(),
+
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         pubkey: pubkey,
         privateKey: privateKey,
@@ -699,6 +732,8 @@ class _AuthContent extends StatelessWidget {
 
     try {
       final session = BunkerAuthSession(
+        createdAt: DateTime.now(),
+
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         pubkey: '', // Would be set by bunker service
         bunkerUrl: bunkerUrl,
@@ -740,6 +775,8 @@ class _AuthContent extends StatelessWidget {
       }
 
       final session = PubkeyAuthSession(
+        createdAt: DateTime.now(),
+
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         pubkey: pubkey,
       );

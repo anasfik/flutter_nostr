@@ -49,7 +49,6 @@ class _CreatePostContentState extends State<_CreatePostContent> {
   Widget build(BuildContext context) {
     return StreamBuilder<BaseAuthSession?>(
       stream: widget.options.sessionManager.currentSessionStream,
-      initialData: widget.options.sessionManager.currentSession,
       builder: (context, snapshot) {
         final currentSession = snapshot.data;
         final canPost = currentSession?.canSign ?? false;
