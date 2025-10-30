@@ -90,6 +90,15 @@ class FlutterNostrFeedList extends StatelessWidget {
         itemCount: items.length + 1,
         itemBuilder: (context, index) {
           if (index == items.length && index != 0) {
+            final noMoreData =
+                data.eventRequestResponseEntries.last.events.isEmpty;
+            if (noMoreData) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text('No more items to load.')),
+              );
+            }
+
             return VisibilityDetector(
               key: ValueKey('load-more-$index'),
               onVisibilityChanged: (options.loadMore != null)
