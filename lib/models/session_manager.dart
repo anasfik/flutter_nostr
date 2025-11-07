@@ -13,14 +13,15 @@ class SessionManager {
 
   static SessionManager instance = SessionManager._();
 
+  final lastSessionId = "last_session_id";
+
   BaseAuthSession? _currentSession;
+
   final StreamController<BaseAuthSession?> _sessionController =
       StreamController<BaseAuthSession?>.broadcast();
 
   /// Stream of current session changes
   Stream<BaseAuthSession?> get currentSessionStream {
-    _sessionController.add(_currentSession);
-
     return _sessionController.stream;
   }
 
@@ -58,17 +59,21 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
 
     if (session != null) {
-      await prefs.setString('last_session_id', session.id);
+      await prefs.setString(lastSessionId, session.id);
     } else {
-      await prefs.remove('last_session_id');
+      await prefs.remove(lastSessionId);
     }
-
     return _currentSession;
   }
 
   /// Get all sessions
   Stream<List<BaseAuthSession>> allSessions() {
     return _isar.baseAuthSessions.where().watch(fireImmediately: true);
+  }
+
+  /// Get all sessions
+  List<BaseAuthSession> allSessionsSync() {
+    return _isar.baseAuthSessions.where().findAllSync();
   }
 
   /// Get a session by ID
@@ -107,10 +112,10 @@ class SessionManager {
   Future<void> _syncWithStoredLastSession() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final lastSessionId = prefs.getString('last_session_id');
+    final lastSession = prefs.getString(lastSessionId);
 
-    if (lastSessionId != null) {
-      final session = getSessionById(lastSessionId);
+    if (lastSession != null) {
+      final session = getSessionById(lastSession);
       if (session != null) {
         _currentSession = session;
         _sessionController.add(_currentSession);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_nostr/components/identity_manager/current_session_builder.dart';
+import 'package:flutter_nostr/components/identity_manager/sessions_list_builder.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
 import 'package:flutter_nostr/models/auth_session.dart';
 import 'package:flutter_nostr/models/nostr_auth_options.dart';
@@ -78,12 +80,9 @@ class _AuthContent extends StatelessWidget {
   }
 
   Widget _buildCurrentSessionCard(BuildContext context) {
-    return StreamBuilder(
-      stream: options.sessionManager.currentSessionStream,
-
-      builder: (context, snapshot) {
-        final session = snapshot.data;
-
+    return CurrentSessionBuilder(
+      sessionManager: options.sessionManager,
+      builder: (context, currentSession) {
         return Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -93,7 +92,7 @@ class _AuthContent extends StatelessWidget {
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: session != null
+                colors: currentSession != null
                     ? [Colors.blue[400]!, Colors.purple[400]!]
                     : [Colors.grey[400]!, Colors.grey[600]!],
               ),
@@ -118,7 +117,7 @@ class _AuthContent extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            session?.pubkey ?? 'No active session',
+                            currentSession?.pubkey ?? 'No active session',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -130,9 +129,9 @@ class _AuthContent extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (session != null)
+                    if (currentSession != null)
                       Chip(
-                        label: Text(session.type.name.toUpperCase()),
+                        label: Text(currentSession.type.name.toUpperCase()),
                         backgroundColor: Colors.white.withOpacity(0.2),
                         labelStyle: TextStyle(
                           color: Colors.white,
@@ -141,14 +140,16 @@ class _AuthContent extends StatelessWidget {
                       ),
                   ],
                 ),
-                if (session != null) ...[
+                if (currentSession != null) ...[
                   SizedBox(height: 12),
                   Row(
                     children: [
                       Icon(Icons.check_circle, color: Colors.white, size: 16),
                       SizedBox(width: 8),
                       Text(
-                        session.canSign ? 'Can sign events' : 'Read-only',
+                        currentSession.canSign
+                            ? 'Can sign events'
+                            : 'Read-only',
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ],
@@ -234,15 +235,12 @@ class _AuthContent extends StatelessWidget {
   }
 
   Widget _buildSessionsList(BuildContext context) {
-    return StreamBuilder<List<BaseAuthSession>>(
-      stream: options.sessionManager.allSessions(),
-      builder: (context, snapshot) {
-        final sessions = snapshot.data ?? [];
-
-        return StreamBuilder(
-          stream: options.sessionManager.currentSessionStream,
-          builder: (context, asyncSnapshot) {
-            final currentSession = asyncSnapshot.data;
+    return SessionsListBuilder(
+      sessionManager: options.sessionManager,
+      builder: (context, sessions) {
+        return CurrentSessionBuilder(
+          sessionManager: options.sessionManager,
+          builder: (context, currentSession) {
             return Card(
               elevation: 2,
               shape: RoundedRectangleBorder(

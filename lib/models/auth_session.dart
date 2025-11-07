@@ -80,7 +80,7 @@ class BaseAuthSession {
 
   /// Convert session to JSON for storage
   Map<String, dynamic> toJson() {
-    throw UnimplementedError('toJson must be implemented by subclasses');
+    throw ('toJson must be implemented by subclasses');
   }
 
   /// Create session from JSON

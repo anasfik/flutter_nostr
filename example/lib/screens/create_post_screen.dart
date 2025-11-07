@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_nostr/components/identity_manager/current_session_builder.dart';
 import 'package:flutter_nostr/flutter_nostr.dart';
 import 'package:flutter_nostr/models/auth_session.dart';
 import 'package:flutter_nostr/models/nostr_auth_options.dart';
@@ -47,10 +48,9 @@ class _CreatePostContentState extends State<_CreatePostContent> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<BaseAuthSession?>(
-      stream: widget.options.sessionManager.currentSessionStream,
-      builder: (context, snapshot) {
-        final currentSession = snapshot.data;
+    return CurrentSessionBuilder(
+      sessionManager: widget.options.sessionManager,
+      builder: (context, currentSession) {
         final canPost = currentSession?.canSign ?? false;
 
         return Padding(
