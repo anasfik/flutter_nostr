@@ -1,6 +1,25 @@
 name: flutter_nostr
-description: "A new Flutter package project."
-version: 0.0.1
+description: " Full SDK to build scalable Nostr apps - Auth, Feeds, Chat, Search, Relays, Events... "
+version: 0.7.4
+documentation: https://github.com/anasfik/flutter_nostr
+website: https://github.com/anasfik/flutter_nostr
+repository: https://github.com/anasfik/flutter_nostr
+
+funding:
+  - https://github.com/sponsors/anasfik
+
+topics:
+  - nostr
+  - sdk
+  - web3
+  - decentralized
+  - app
+
+issue_tracker: https://github.com/anasfik/flutter_nostr/issues
+screenshots:
+  - description: "Flutter Nostr SDK Overview"
+    path: ./flutter_nostr.png
+
 
 
 environment:
@@ -34,6 +53,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+
 
   # To add assets to your package, add an assets section, like this:
   # assets:

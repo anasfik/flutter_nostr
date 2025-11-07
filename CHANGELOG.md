@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.7.4
 
-* TODO: Describe initial release.
+* Initial package beta release.
