@@ -18,7 +18,7 @@ topics:
 issue_tracker: https://github.com/anasfik/flutter_nostr/issues
 screenshots:
   - description: "Flutter Nostr SDK Overview"
-    path: ./flutter_nostr.png
+    path: flutter_nostr.png
 
 
 
