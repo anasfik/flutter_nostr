@@ -20,7 +20,7 @@ abstract class FlutterNostr {
   static late Isar _isar;
 
   static Isar get isar => _isar;
-  
+
   static Future<void> init({required List<String> relays}) async {
     try {
       WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +49,6 @@ abstract class FlutterNostr {
     final dir = await getApplicationDocumentsDirectory();
     print('Database directory: ${dir.path}');
 
-    _isar = await Isar.open([BaseAuthSessionSchema], directory: dir.path);
+    _isar = await Isar.open([AuthSessionSchema], directory: dir.path);
   }
 }

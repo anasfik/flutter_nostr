@@ -15,34 +15,34 @@ class SessionManager {
 
   final lastSessionId = "last_session_id";
 
-  BaseAuthSession? _currentSession;
+  AuthSession? _currentSession;
 
-  final StreamController<BaseAuthSession?> _sessionController =
-      StreamController<BaseAuthSession?>.broadcast();
+  final StreamController<AuthSession?> _sessionController =
+      StreamController<AuthSession?>.broadcast();
 
   /// Stream of current session changes
-  Stream<BaseAuthSession?> get currentSessionStream {
+  Stream<AuthSession?> get currentSessionStream {
     return _sessionController.stream;
   }
 
   /// Get the current active session
-  BaseAuthSession? get currentSession => _currentSession;
+  AuthSession? get currentSession => _currentSession;
 
   Isar get _isar => FlutterNostr.isar;
 
   /// Add a new session to the manager
-  Future<BaseAuthSession> addSession(BaseAuthSession session) async {
+  Future<AuthSession> addSession(AuthSession session) async {
     await _isar.writeTxn(() async {
-      await _isar.baseAuthSessions.put(session);
+      await _isar.authSessions.put(session);
     });
 
     return session;
   }
 
   /// Remove a session from the manager
-  Future<void> removeSession(BaseAuthSession session) async {
+  Future<void> removeSession(AuthSession session) async {
     await _isar.writeTxn(() async {
-      await _isar.baseAuthSessions.delete(session.isarId);
+      await _isar.authSessions.delete(session.isarId);
     });
 
     // If the removed session was the current session, clear it
@@ -52,7 +52,7 @@ class SessionManager {
   }
 
   /// Switch to a different session
-  Future<BaseAuthSession?> switchSession(BaseAuthSession? session) async {
+  Future<AuthSession?> switchSession(AuthSession? session) async {
     _currentSession = session;
     _sessionController.add(_currentSession);
 
@@ -67,18 +67,18 @@ class SessionManager {
   }
 
   /// Get all sessions
-  Stream<List<BaseAuthSession>> allSessions() {
-    return _isar.baseAuthSessions.where().watch(fireImmediately: true);
+  Stream<List<AuthSession>> allSessions() {
+    return _isar.authSessions.where().watch(fireImmediately: true);
   }
 
   /// Get all sessions
-  List<BaseAuthSession> allSessionsSync() {
-    return _isar.baseAuthSessions.where().findAllSync();
+  List<AuthSession> allSessionsSync() {
+    return _isar.authSessions.where().findAllSync();
   }
 
   /// Get a session by ID
-  BaseAuthSession? getSessionById(String id) {
-    return _isar.baseAuthSessions.filter().idEqualTo(id).findFirstSync();
+  AuthSession? getSessionById(String id) {
+    return _isar.authSessions.filter().idEqualTo(id).findFirstSync();
   }
 
   /// Check if a session exists
@@ -87,21 +87,21 @@ class SessionManager {
   }
 
   /// Get sessions by type
-  List<BaseAuthSession> getSessionsByType(AuthType type) {
-    return _isar.baseAuthSessions.filter().typeEqualTo(type).findAllSync();
+  List<AuthSession> getSessionsByType(AuthType type) {
+    return _isar.authSessions.filter().typeEqualTo(type).findAllSync();
   }
 
   /// Clear all sessions
   Future<void> clearAllSessions() async {
     _isar.writeTxn(() async {
-      await _isar.baseAuthSessions.clear();
+      await _isar.authSessions.clear();
     });
 
     await switchSession(null);
   }
 
   /// Get sessions count
-  int get sessionCount => _isar.baseAuthSessions.countSync();
+  int get sessionCount => _isar.authSessions.countSync();
 
   /// Dispose of resources
   void dispose() {

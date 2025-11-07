@@ -300,7 +300,7 @@ class _AuthContent extends StatelessWidget {
 
   Widget _buildSessionItem(
     BuildContext context,
-    BaseAuthSession session,
+    AuthSession session,
     bool isCurrent,
   ) {
     return Container(
@@ -335,7 +335,9 @@ class _AuthContent extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 Text(
-                  session.pubkey.substring(0, 16) + '...',
+                  session.bunkerUrl != null
+                      ? session.bunkerUrl!.substring(0, 16) + '...'
+                      : session.pubkey.substring(0, 16) + '...',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -694,7 +696,8 @@ class _AuthContent extends StatelessWidget {
 
     try {
       final pubkey = options.keysManager.getPublicKeyFromPrivateKey(privateKey);
-      final session = PrivateKeyAuthSession(
+      final session = AuthSession(
+        type: AuthType.privateKey,
         createdAt: DateTime.now(),
 
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -729,7 +732,8 @@ class _AuthContent extends StatelessWidget {
     }
 
     try {
-      final session = BunkerAuthSession(
+      final session = AuthSession(
+        type: AuthType.bunker,
         createdAt: DateTime.now(),
 
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -772,7 +776,8 @@ class _AuthContent extends StatelessWidget {
         pubkey = pubkeyInput;
       }
 
-      final session = PubkeyAuthSession(
+      final session = AuthSession(
+        type: AuthType.pubkey,
         createdAt: DateTime.now(),
 
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -793,10 +798,7 @@ class _AuthContent extends StatelessWidget {
     }
   }
 
-  Future<void> _deleteSession(
-    BuildContext context,
-    BaseAuthSession session,
-  ) async {
+  Future<void> _deleteSession(BuildContext context, AuthSession session) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -823,10 +825,7 @@ class _AuthContent extends StatelessWidget {
     }
   }
 
-  Future<void> _switchSession(
-    BuildContext context,
-    BaseAuthSession session,
-  ) async {
+  Future<void> _switchSession(BuildContext context, AuthSession session) async {
     await options.sessionManager.switchSession(session);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Switched to ${session.type.name} session')),
@@ -835,7 +834,7 @@ class _AuthContent extends StatelessWidget {
 
   Future<void> _userDetailsScreen(
     BuildContext context,
-    BaseAuthSession session,
+    AuthSession session,
   ) async {
     await Navigator.pushNamed(context, '/user', arguments: session.pubkey);
   }
